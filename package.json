@@ -1,0 +1,42 @@
+{
+  "name": "promptic",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "my-command": "./bin/cli.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx src/index.ts",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lavizp/promptic.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lavizp/promptic/issues"
+  },
+  "homepage": "https://github.com/lavizp/promptic#readme",
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^25.3.3",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "inquirer": "^13.3.0"
+  }
+}

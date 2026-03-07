@@ -7,10 +7,10 @@ export async function run() {
 
   const answers = await inquirer.prompt([
     {
-      type: 'input',
-      name: 'projectName',
-      message: 'What is the name of your project?',
-      default: 'my-app',
+      type: 'prompt',
+      name: 'Initial Prompt',
+      message: 'Enter the Initial Prompt',
+      default: '',
       validate: (input) => input.length > 0 ? true : 'Project name cannot be empty.'
     },
     {
@@ -29,7 +29,7 @@ export async function run() {
 
   // Using the results
   console.log(chalk.green(`\n🚀 Setting up ${chalk.bold(answers.projectName)}...`));
-  
+
   if (answers.language === 'TypeScript') {
     console.log(chalk.blue("Good choice! TypeScript is awesome."));
   }

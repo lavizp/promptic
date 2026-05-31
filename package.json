@@ -1,7 +1,7 @@
 {
   "name": "promptic",
   "version": "1.0.0",
-  "description": "",
+  "description": "A Prompt Enhancing CLI tool",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -36,6 +36,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.5.1",
     "chalk": "^5.6.2",
     "conf": "^15.1.0",
     "inquirer": "^13.3.0"

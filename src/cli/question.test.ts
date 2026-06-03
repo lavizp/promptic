@@ -10,7 +10,7 @@ vi.mock("../utils/envUtils.ts", () => ({
 const { questions } = await import("./question.ts");
 
 function mockEnv(hasValue: boolean): EnvStore {
-  return { has: () => hasValue } as EnvStore;
+  return { has: () => hasValue } as unknown as EnvStore;
 }
 
 const PROVIDERS = ["open_ai", "anthropic", "gemini", "groq"] as const;
@@ -26,8 +26,9 @@ describe("questions", () => {
     it("is a select type with 4 provider choices", () => {
       expect(q.key).toBe("ai_provider");
       expect(q.type).toBe("select");
+      if (q.type !== "select") return;
       expect(q.choices).toHaveLength(4);
-      expect(q.choices!.map((c) => c.value).sort()).toEqual(
+      expect(q.choices.map((c: { value: string }) => c.value).sort()).toEqual(
         [...PROVIDERS].sort(),
       );
     });

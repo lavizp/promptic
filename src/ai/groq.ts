@@ -1,16 +1,16 @@
-import OpenAI from "openai";
+import Groq from "groq-sdk";
 import type { GenerateInput, GenerateResult } from "./types.ts";
 import { providerConfig } from "./config.ts";
 import { systemPrompt } from "./prompts/system.ts";
 import { envStore } from "../config/envConfig/envConfig.ts";
 
-const config = providerConfig.openai;
+const config = providerConfig.groq;
 
 export async function generate(input: GenerateInput): Promise<GenerateResult> {
-  const apiKey = envStore.get("OPENAI_API_KEY");
-  if (!apiKey) throw new Error("OPENAI_API_KEY not found in env store");
+  const apiKey = envStore.get("GROQ_API_KEY");
+  if (!apiKey) throw new Error("GROQ_API_KEY not found in env store");
 
-  const client = new OpenAI({ apiKey });
+  const client = new Groq({ apiKey });
 
   const response = await client.chat.completions.create({
     model: config.model,
@@ -25,6 +25,6 @@ export async function generate(input: GenerateInput): Promise<GenerateResult> {
   return {
     content: response.choices[0]?.message.content ?? "",
     model: response.model,
-    provider: "openai",
+    provider: "groq",
   };
 }

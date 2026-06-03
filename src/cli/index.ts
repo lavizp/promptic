@@ -1,1 +1,3 @@
-//HEre is where everything starts
+import { askQuestions } from "./flow.ts";
+
+const answers = await askQuestions()

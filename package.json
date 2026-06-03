@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "start": "tsx src/index.ts",
+    "start": "tsx src/cli/index.ts",
     "prepublishOnly": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -36,9 +36,13 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
+    "@google/generative-ai": "^0.24.1",
     "@inquirer/prompts": "^8.5.1",
     "chalk": "^5.6.2",
     "conf": "^15.1.0",
-    "inquirer": "^13.3.0"
+    "groq-sdk": "^1.2.1",
+    "inquirer": "^13.3.0",
+    "openai": "^6.41.0"
   }
 }

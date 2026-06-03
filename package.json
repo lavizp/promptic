@@ -15,7 +15,8 @@
     "build": "tsc",
     "start": "tsx src/cli/index.ts",
     "prepublishOnly": "npm run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "repository": {
     "type": "git",
@@ -33,7 +34,8 @@
     "@types/node": "^25.3.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

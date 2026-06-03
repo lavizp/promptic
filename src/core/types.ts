@@ -1,4 +1,4 @@
-import type Conf from "conf";
+import type { EnvStore } from "../config/envConfig/envStore.ts";
 
 type AIProvider = 'open_ai' | 'anthropic' | 'gemini' | 'groq';
 
@@ -8,7 +8,7 @@ type Answers = {
 
 type Context = {
   answers: Answers;
-  env: Conf<Record<string, string>>;
+  env: EnvStore
 };
 
 export type Choice = {
@@ -17,13 +17,16 @@ export type Choice = {
   description?: string;
   disabled?: boolean | string
 };
-
+export type QuestionCallback = {
+  value: string
+}
 export type Question =
   | {
     key: keyof Answers | string;
     type: 'input';
     question: string;
     when?: (ctx: Context) => boolean;
+    then?: ({ value }: QuestionCallback) => void
   }
   | {
     key: keyof Answers | string;
@@ -31,4 +34,5 @@ export type Question =
     question: string;
     choices: Choice[];
     when?: (ctx: Context) => boolean;
+    then?: ({ value }: QuestionCallback) => void
   };

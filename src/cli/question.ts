@@ -1,4 +1,5 @@
 import type { Question } from "../core/types.js";
+import { fillEnvValue } from "../utils/envUtils.ts";
 
 export const questions: Question[] = [
   {
@@ -32,25 +33,41 @@ export const questions: Question[] = [
     key: 'open_ai_api_key',
     type: 'input',
     question: 'Please Enter Your Open AI API Key',
-    when: ({ answers, env }) => answers.ai_provider === 'open_ai' && !env.has('OPENAI_API_KEY')
+    when: ({ answers, env }) => answers.ai_provider === 'open_ai' && !env.has('OPENAI_API_KEY'),
+    then({ value }) {
+      fillEnvValue({ key: 'OPENAI_API_KEY', value })
+    },
+
   },
   {
     key: 'anthropic_api_key',
     type: 'input',
     question: 'Please Enter Your Anthropic API Key',
-    when: ({ answers, env }) => answers.ai_provider === 'anthropic' && !env.has('ANTHROPIC_API_KEY')
+    when: ({ answers, env }) => answers.ai_provider === 'anthropic' && !env.has('ANTHROPIC_API_KEY'),
+    then({ value }) {
+      fillEnvValue({ key: 'ANTHROPIC_API_KEY', value })
+    },
+
   },
   {
     key: 'gemini_api_key',
     type: 'input',
     question: 'Please Enter Your Gemini API Key',
-    when: ({ answers, env }) => answers.ai_provider === 'gemini' && !env.has('GEMINI_API_KEY')
+    when: ({ answers, env }) => answers.ai_provider === 'gemini' && !env.has('GEMINI_API_KEY'),
+    then({ value }) {
+      fillEnvValue({ key: 'GEMINI_API_KEY', value })
+    },
+
   },
   {
     key: 'groq_api_key',
     type: 'input',
     question: 'Please Enter Your Groq API Key',
-    when: ({ answers, env }) => answers.ai_provider === 'groq' && !env.has('GROQ_API_KEY')
+    when: ({ answers, env }) => answers.ai_provider === 'groq' && !env.has('GROQ_API_KEY'),
+    then({ value }) {
+      fillEnvValue({ key: 'GROQ_API_KEY', value })
+    },
+
   },
   {
     key: 'prompt',

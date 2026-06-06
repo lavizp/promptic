@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { GenerateInput, GenerateResult } from "./types.ts";
 import { providerConfig } from "./config.ts";
-import { systemPrompt } from "./prompts/system.ts";
 import { envStore } from "../config/envConfig/envConfig.ts";
 
 const config = providerConfig.gemini;
@@ -14,7 +13,7 @@ export async function generate(input: GenerateInput): Promise<GenerateResult> {
 
   const model = genAI.getGenerativeModel({
     model: config.model,
-    systemInstruction: systemPrompt,
+    systemInstruction: input.systemPrompt,
   });
 
   const result = await model.generateContent({

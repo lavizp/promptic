@@ -1,7 +1,6 @@
 import Groq from "groq-sdk";
 import type { GenerateInput, GenerateResult } from "./types.ts";
 import { providerConfig } from "./config.ts";
-import { systemPrompt } from "./prompts/system.ts";
 import { envStore } from "../config/envConfig/envConfig.ts";
 
 const config = providerConfig.groq;
@@ -15,7 +14,7 @@ export async function generate(input: GenerateInput): Promise<GenerateResult> {
   const response = await client.chat.completions.create({
     model: config.model,
     messages: [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: input.systemPrompt },
       { role: "user", content: input.prompt },
     ],
     temperature: config.temperature,

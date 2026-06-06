@@ -1,7 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { GenerateInput, GenerateResult } from "./types.ts";
 import { providerConfig } from "./config.ts";
-import { systemPrompt } from "./prompts/system.ts";
 import { envStore } from "../config/envConfig/envConfig.ts";
 
 const config = providerConfig.anthropic;
@@ -14,7 +13,7 @@ export async function generate(input: GenerateInput): Promise<GenerateResult> {
 
   const response = await client.messages.create({
     model: config.model,
-    system: systemPrompt,
+    system: input.systemPrompt,
     messages: [{ role: "user", content: input.prompt }],
     temperature: config.temperature,
     max_tokens: config.maxTokens,

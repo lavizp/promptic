@@ -1,5 +1,6 @@
 export interface GenerateInput {
   prompt: string;
+  systemPrompt: string;
 }
 
 export interface GenerateResult {
@@ -7,3 +8,5 @@ export interface GenerateResult {
   model: string;
   provider: string;
 }
+
+export type AIProviderEnums = 'anthropic' | 'openai' | 'gemini' | 'groq'

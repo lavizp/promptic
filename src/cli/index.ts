@@ -1,3 +1,4 @@
 import 'dotenv/config';
-import { askQuestions } from "./flow.ts";
-const answers = await askQuestions()
+import { questions } from '../utils/question.ts';
+import { askQuestions } from '../core/questionBuilder.ts';
+const answers = await askQuestions(questions)

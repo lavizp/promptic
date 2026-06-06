@@ -1,10 +1,9 @@
 
 import inquirer from "inquirer";
-import { questions } from "./question.ts";
-
 import { select } from '@inquirer/prompts';
 import { envStore } from "../config/envConfig/envConfig.ts"
-export const askQuestions = async (): Promise<Record<string, string>> => {
+import type { Question } from "../core/types.ts";
+export const askQuestions = async (questions: Question[]): Promise<Record<string, string>> => {
 
   const answer: Record<string, string> = {}
 

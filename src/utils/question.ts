@@ -1,7 +1,6 @@
-import type { Question } from "../core/types.js";
-import { fillEnvValue } from "../utils/envUtils.ts";
-
-export const questions: Question[] = [
+import type { Question } from "../core/types.ts";
+import { fillEnvValue } from "./envUtils.ts";
+export const configQuestions: Question[] = [
   {
     key: 'ai_provider',
     question: 'Choose Your API Provider',
@@ -69,6 +68,9 @@ export const questions: Question[] = [
     },
 
   },
+]
+export const questions: Question[] = [
+  ...configQuestions,
   {
     key: 'prompt',
     type: 'input',

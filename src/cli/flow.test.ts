@@ -21,8 +21,8 @@ vi.mock("../config/envConfig/envConfig.ts", () => ({
   envStore: mockEnvStore,
 }));
 
-const { askQuestions } = await import("./flow.ts");
-
+const { askQuestions } = await import("../core/questionBuilder.ts");
+const { questions } = await import('../utils/question.ts')
 describe("askQuestions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,7 +35,7 @@ describe("askQuestions", () => {
       .mockResolvedValueOnce({ open_ai_api_key: "sk-123" })
       .mockResolvedValueOnce({ prompt: "write a poem" });
 
-    const answers = await askQuestions();
+    const answers = await askQuestions(questions);
 
     expect(answers.ai_provider).toBe("open_ai");
     expect(answers.open_ai_api_key).toBe("sk-123");
@@ -48,7 +48,7 @@ describe("askQuestions", () => {
     mockInquirerPrompt
       .mockResolvedValueOnce({ prompt: "hello" });
 
-    const answers = await askQuestions();
+    const answers = await askQuestions(questions);
 
     expect(answers.ai_provider).toBe("anthropic");
     expect(mockInquirerPrompt).toHaveBeenCalledTimes(1);
@@ -64,7 +64,7 @@ describe("askQuestions", () => {
       .mockResolvedValueOnce({ gemini_api_key: "gem-key" })
       .mockResolvedValueOnce({ prompt: "hello" });
 
-    const answers = await askQuestions();
+    const answers = await askQuestions(questions);
 
     expect(answers.ai_provider).toBe("gemini");
     expect(answers.gemini_api_key).toBe("gem-key");
@@ -84,7 +84,7 @@ describe("askQuestions", () => {
     mockEnvStore.has.mockReturnValue(true);
     mockInquirerPrompt.mockResolvedValueOnce({ prompt: "test" });
 
-    await askQuestions();
+    await askQuestions(questions);
 
     expect(mockSelect).toHaveBeenCalledWith(
       expect.objectContaining({

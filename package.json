@@ -31,7 +31,7 @@
   "homepage": "https://github.com/lavizp/promptic#readme",
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
-    "@types/marked": "^6.0.0",
+
     "@types/marked-terminal": "^6.1.1",
     "@types/node": "^25.3.3",
     "ts-node": "^10.9.2",
@@ -50,7 +50,7 @@
     "dotenv": "^17.4.2",
     "groq-sdk": "^1.2.1",
     "inquirer": "^13.3.0",
-    "marked": "^18.0.5",
+    "marked": "^15.0.0",
     "marked-terminal": "^7.3.0",
     "openai": "^6.41.0"
   }

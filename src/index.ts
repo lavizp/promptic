@@ -9,17 +9,9 @@ program
   .name('promptic')
   .version('1.0.0');
 program
-  .command('runa')
-  .option('--web', 'Run in web mode')
-  .action((_, cmd) => {
-    console.log(_)
-    //runAction(options.web ? 'web' : 'normal');
-  });
-program
   .command('run')
   .option('--web', 'Run in web mode')
   .action((options) => {
-    console.log(options)
     runAction(options.web ? 'web' : 'normal')
   });
 program

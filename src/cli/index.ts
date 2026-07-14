@@ -7,6 +7,7 @@ import { PromptUtils } from '../core/promptBuilder.ts';
 import { getAIProvider } from '../ai/index.ts';
 import type { AIProviderEnums } from '../ai/types.ts';
 import { normalPrompt, webSearchPrompt } from '../ai/prompts/system.ts';
+import { renderMarkdownOutput } from '../output/markdown.ts';
 export const runAction = async (type: 'normal' | 'web') => {
   console.log(type)
   const answers = await askQuestions(questions)
@@ -31,4 +32,6 @@ export const runAction = async (type: 'normal' | 'web') => {
   const apiProvider = getAIProvider(ai as AIProviderEnums)
   const response = await apiProvider({ prompt: answers['prompt'], systemPrompt: type === 'web' ? webSearchPrompt : normalPrompt })
   console.log(response.content)
+  console.log('-----------------------------------------')
+  renderMarkdownOutput(response.content)
 }

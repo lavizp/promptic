@@ -16,5 +16,14 @@ export class PromptUtils {
     return finalUserContent
   }
 
+  public static buildWebSearchSystemPrompt(systemPrompt: string, finalPrompt: string): string {
+    return `${systemPrompt}
+
+# Search Context
+<search_context>
+${finalPrompt}
+</search_context>`
+  }
+
 }
 

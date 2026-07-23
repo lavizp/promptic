@@ -1,0 +1,56 @@
+import { useState, useCallback } from "react";
+import type { AppState, ViewType, HistoryEntry } from "./types/app.js";
+import type { Todo } from "./types/todo.js";
+import type { Note } from "./types/note.js";
+import { OutputPane } from "./components/layout/OutputPane.js";
+import { InputPrompt } from "./components/layout/InputPrompt.js";
+import { parseCommand } from "./controllers/commandParser.js";
+import { rolloverDaily } from "./core/todoEngine.js";
+
+const rolledOver = rolloverDaily();
+const initialHistory: HistoryEntry[] = [];
+if (rolledOver > 0) {
+  initialHistory.push({
+    id: 0,
+    command: 'system',
+    output: `Rolled over ${rolledOver} uncompleted daily tasks to backlog.`,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export function App() {
+  const [state, setState] = useState<AppState>({
+    currentView: 'feed',
+    history: initialHistory,
+    activeTodoList: [],
+    activeNote: null,
+    chatStream: '',
+    isProcessing: false,
+    error: null,
+    provider: 'openai',
+  });
+
+  const handleCommand = useCallback((input: string) => {
+    parseCommand(input, state, setState);
+  }, [state]);
+
+  return (
+    <box flexDirection="column" height="100%" width="100%">
+      <box flexGrow={1} overflow="hidden">
+        <OutputPane
+          currentView={state.currentView}
+          history={state.history}
+          activeTodoList={state.activeTodoList}
+          activeNote={state.activeNote}
+          chatStream={state.chatStream}
+          isProcessing={state.isProcessing}
+          error={state.error}
+          provider={state.provider}
+        />
+      </box>
+      <box height={3} borderStyle="single" borderColor="gray">
+        <InputPrompt onSubmit={handleCommand} isProcessing={state.isProcessing} />
+      </box>
+    </box>
+  );
+}

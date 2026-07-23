@@ -3,5 +3,5 @@ export interface Reminder {
   message: string;
   scheduled_at: string;
   created_at: string;
-  triggered: boolean;
+  triggered: number; // 0 | 1 — matches SQLite INTEGER
 }

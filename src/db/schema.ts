@@ -9,7 +9,11 @@ let db: Database.Database | null = null;
 
 export function getDb(): Database.Database {
   if (!db) {
-    db = new Database(DB_PATH);
+    try {
+      db = new Database(DB_PATH);
+    } catch (err) {
+      throw new Error(`Failed to open database at ${DB_PATH}: ${err}`);
+    }
     db.pragma('journal_mode = WAL');
     initSchema(db);
   }

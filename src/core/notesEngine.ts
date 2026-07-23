@@ -6,10 +6,8 @@ import type { Note, NoteMeta } from '../types/note.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const NOTES_DIR = path.resolve(__dirname, '../../notes');
 
-type NoteRow = { id: string; title: string; tags: string; created_at: string; updated_at: string };
-
 async function ensureNotesDir() {
-  try { await fs.mkdir(NOTES_DIR, { recursive: true }); } catch {}
+  await fs.mkdir(NOTES_DIR, { recursive: true });
 }
 
 function generateId(): string {

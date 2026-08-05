@@ -187,6 +187,9 @@ export async function parseCommand(
         '  /clear               - Clear history',
         '  /help                - Show this help',
         '  (any other text)     - Treated as /hey',
+        '',
+        'In any view: Esc returns to the feed.',
+        'Todos view: ↑/↓ move · space toggle · a add · tab category in add mode.',
       ].join('\n');
       setState(s => ({ ...s, ...addEntry(s, input, helpText) }));
       break;

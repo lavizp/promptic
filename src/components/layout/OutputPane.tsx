@@ -17,6 +17,7 @@ interface OutputPaneProps {
   isProcessing: boolean;
   error: string | null;
   provider: string;
+  onExit: () => void;
 }
 
 export function OutputPane(props: OutputPaneProps) {
@@ -28,13 +29,15 @@ export function OutputPane(props: OutputPaneProps) {
 
   switch (currentView) {
     case 'todos':
-      return <TodoView />;
+      return <TodoView onExit={props.onExit} />;
     case 'note':
-      return props.activeNote ? <NoteView note={props.activeNote} /> : <FeedView history={props.history} />;
+      return props.activeNote
+        ? <NoteView note={props.activeNote} onExit={props.onExit} />
+        : <FeedView history={props.history} />;
     case 'chat':
-      return <ChatView stream={props.chatStream} isProcessing={props.isProcessing} />;
+      return <ChatView stream={props.chatStream} isProcessing={props.isProcessing} onExit={props.onExit} />;
     case 'config':
-      return <ConfigView />;
+      return <ConfigView onExit={props.onExit} />;
     case 'feed':
     default:
       return <FeedView history={props.history} />;

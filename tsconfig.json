@@ -9,7 +9,7 @@
     "module": "nodenext",
     "target": "esnext",
     "types": [
-      "node"
+      "bun-types"
     ],
     // For nodejs:
     // "lib": ["esnext"],

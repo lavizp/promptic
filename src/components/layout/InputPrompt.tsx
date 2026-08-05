@@ -3,9 +3,10 @@ import { useState, useCallback } from "react";
 interface InputPromptProps {
   onSubmit: (command: string) => void;
   isProcessing: boolean;
+  focused?: boolean;
 }
 
-export function InputPrompt({ onSubmit, isProcessing }: InputPromptProps) {
+export function InputPrompt({ onSubmit, isProcessing, focused = true }: InputPromptProps) {
   const [value, setValue] = useState('');
 
   const handleSubmit = useCallback((inputValue: string) => {
@@ -20,7 +21,7 @@ export function InputPrompt({ onSubmit, isProcessing }: InputPromptProps) {
       onChange={(v) => setValue(v as string)}
       onSubmit={(v) => { if (typeof v === 'string') handleSubmit(v); }}
       placeholder={isProcessing ? "Processing..." : "Type a command (/help for list)..."}
-      focused
+      focused={focused}
     />
   );
 }

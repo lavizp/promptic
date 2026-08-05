@@ -1,26 +1,26 @@
-import Database from 'better-sqlite3';
+import { Database } from 'bun:sqlite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.resolve(__dirname, '../../db/brain.sqlite');
 
-let db: Database.Database | null = null;
+let db: Database | null = null;
 
-export function getDb(): Database.Database {
+export function getDb(): Database {
   if (!db) {
     try {
       db = new Database(DB_PATH);
     } catch (err) {
       throw new Error(`Failed to open database at ${DB_PATH}: ${err}`);
     }
-    db.pragma('journal_mode = WAL');
+    db.exec('PRAGMA journal_mode = WAL');
     initSchema(db);
   }
   return db;
 }
 
-function initSchema(db: Database.Database) {
+function initSchema(db: Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS todos (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,7 +54,7 @@ function initSchema(db: Database.Database) {
   `);
 }
 
-export function closeDb() {
+export function closeDb(): void {
   if (db) {
     db.close();
     db = null;

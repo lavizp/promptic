@@ -55,43 +55,8 @@ export async function parseCommand(
       break;
     }
 
-    case 'note': {
-      const action = args[0];
-      const noteArgs = args.slice(1).join(' ');
-      switch (action) {
-        case 'create': {
-          try {
-            const note = await notesEngine.createNote(noteArgs || 'Untitled');
-            const fullNote = (await notesEngine.getNoteById(note.meta.id)) ?? null;
-            setState(s => ({ ...s, currentView: 'note', activeNote: fullNote, ...addEntry(s, input, `Created note: ${note.meta.title} (${note.meta.id})`) }));
-          } catch (err: any) {
-            setState(s => ({ ...s, error: err.message }));
-          }
-          break;
-        }
-        case 'view': {
-          try {
-            const note = noteArgs ? await notesEngine.getNoteById(noteArgs) || await notesEngine.getNoteByTitle(noteArgs) : undefined;
-            if (note) {
-              const backlinks = linkEngine.getBacklinks(note.meta.id);
-              note.backlinks = backlinks;
-              setState(s => ({ ...s, currentView: 'note', activeNote: note }));
-            } else {
-              setState(s => ({ ...s, ...addEntry(s, input, `Note not found: ${noteArgs}`) }));
-            }
-          } catch (err: any) {
-            setState(s => ({ ...s, error: err.message }));
-          }
-          break;
-        }
-        case 'edit': {
-          setState(s => ({ ...s, ...addEntry(s, input, 'Edit via $EDITOR not supported in TUI yet. Use /note view to read, or edit the .md file directly.') }));
-          break;
-        }
-        default: {
-          setState(s => ({ ...s, ...addEntry(s, input, 'Usage: /note create [title] | /note view [id|title] | /note edit [id]') }));
-        }
-      }
+    case 'notes': {
+      setState(s => ({ ...s, currentView: 'notes', error: null }));
       break;
     }
 
@@ -153,9 +118,7 @@ export async function parseCommand(
         'Available commands:',
         '  /hey [prompt]        - Ask AI a question',
         '  /todos               - Open the todos view (add/edit/open/move/delete)',
-        '  /note create [title] - Create a new note',
-        '  /note view [id]      - View a note',
-        '  /note edit [id]      - Edit a note',
+        '  /notes               - Open the notes view (add/edit/open/move/delete)',
         '  /tag [note_id] [tag] - Add a tag to a note',
         '  /link [source] [target] - Link two notes',
         '  /reminder [message]  - Set a reminder',
@@ -166,6 +129,7 @@ export async function parseCommand(
         '',
         'In any view: Esc returns to the feed.',
         'Todos view: ↑/↓ move · space toggle · a add · e edit · enter open · m move · d delete · c new category',
+        'Notes view: ↑/↓ move · a add · e title · enter edit (tab preview · ctrl+s save) · m move · d delete · c new category',
       ].join('\n');
       setState(s => ({ ...s, ...addEntry(s, input, helpText) }));
       break;

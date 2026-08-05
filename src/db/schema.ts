@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.resolve(__dirname, '../../db/brain.sqlite');
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 let db: Database | null = null;
 
@@ -26,6 +26,11 @@ export function getDb(): Database {
 function initSchema(db: Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS categories (
+      name       TEXT PRIMARY KEY,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS note_categories (
       name       TEXT PRIMARY KEY,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -92,6 +97,16 @@ function migrate(db: Database) {
 
       DROP TABLE todos;
       ALTER TABLE todos_new RENAME TO todos;
+    `);
+  }
+
+  if (version < 3) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS note_categories (
+        name       TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT OR IGNORE INTO note_categories (name) VALUES ('default');
     `);
   }
 

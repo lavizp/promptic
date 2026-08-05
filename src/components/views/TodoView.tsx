@@ -49,7 +49,7 @@ export function TodoView({ onExit }: TodoViewProps) {
     setDraft('');
   };
 
-  const rows = buildRows(categories.map(c => c.name), todos);
+  const rows = buildRows(categories.map(c => c.name), todos, t => t.category);
   const current = rows[cursor];
 
   useEffect(() => {
@@ -121,36 +121,36 @@ export function TodoView({ onExit }: TodoViewProps) {
             break;
           case 'space':
           case 'x':
-            if (current?.kind === 'todo') {
-              toggleTodo(current.todo.id);
+            if (current?.kind === 'item') {
+              toggleTodo(current.item.id);
               refresh();
             }
             break;
           case 'a': {
             const target = current?.kind === 'category'
               ? current.name
-              : current?.kind === 'todo'
-                ? current.todo.category
+              : current?.kind === 'item'
+                ? current.item.category
                 : DEFAULT_CATEGORY;
             setDraft('');
             setMode({ name: 'addTodo', category: target });
             break;
           }
           case 'e':
-            if (current?.kind === 'todo') {
-              setDraft(current.todo.description);
-              setMode({ name: 'editTodo', todoId: current.todo.id });
+            if (current?.kind === 'item') {
+              setDraft(current.item.description);
+              setMode({ name: 'editTodo', todoId: current.item.id });
             }
             break;
           case 'return':
-            if (current?.kind === 'todo') setMode({ name: 'detail', todoId: current.todo.id });
+            if (current?.kind === 'item') setMode({ name: 'detail', todoId: current.item.id });
             break;
           case 'm':
-            if (current?.kind === 'todo') setMode({ name: 'moveTodo', todoId: current.todo.id, pick: 0 });
+            if (current?.kind === 'item') setMode({ name: 'moveTodo', todoId: current.item.id, pick: 0 });
             break;
           case 'd':
-            if (current?.kind === 'todo') {
-              deleteTodo(current.todo.id);
+            if (current?.kind === 'item') {
+              deleteTodo(current.item.id);
               refresh();
             } else if (current?.kind === 'category' && current.name !== DEFAULT_CATEGORY) {
               setMode({ name: 'removeCategory', category: current.name });
@@ -179,10 +179,10 @@ export function TodoView({ onExit }: TodoViewProps) {
               <text {...sel(i)}>{cursor === i ? '▸ ' : '  '}{row.name.toUpperCase()} ({row.count})</text>
             </box>
           ) : (
-            <box key={`todo-${row.todo.id}`} id={`todo-row-${i}`} marginLeft={1}>
+            <box key={`todo-${row.item.id}`} id={`todo-row-${i}`} marginLeft={1}>
               <text {...sel(i)}>
                 {cursor === i ? '▸ ' : '  '}
-                {row.todo.status === 'completed' ? '☑' : '☐'} {row.todo.description}
+                {row.item.status === 'completed' ? '☑' : '☐'} {row.item.description}
               </text>
             </box>
           )

@@ -1,6 +1,7 @@
 export interface NoteMeta {
   id: string;
   title: string;
+  category: string;
   tags: string[];
   created_at: string;
   updated_at: string;

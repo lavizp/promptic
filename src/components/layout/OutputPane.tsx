@@ -1,9 +1,8 @@
 import type { ViewType, HistoryEntry } from "../../types/app.js";
 import type { Todo } from "../../types/todo.js";
-import type { Note } from "../../types/note.js";
 import { FeedView } from "../views/FeedView.js";
 import { TodoView } from "../views/TodoView.js";
-import { NoteView } from "../views/NoteView.js";
+import { NotesView } from "../views/NotesView.js";
 import { ChatView } from "../views/ChatView.js";
 import { ConfigView } from "../views/ConfigView.js";
 import { ErrorBox } from "../shared/ErrorBox.js";
@@ -12,7 +11,6 @@ interface OutputPaneProps {
   currentView: ViewType;
   history: HistoryEntry[];
   activeTodoList: Todo[];
-  activeNote: Note | null;
   chatStream: string;
   isProcessing: boolean;
   error: string | null;
@@ -30,10 +28,8 @@ export function OutputPane(props: OutputPaneProps) {
   switch (currentView) {
     case 'todos':
       return <TodoView onExit={props.onExit} />;
-    case 'note':
-      return props.activeNote
-        ? <NoteView note={props.activeNote} onExit={props.onExit} />
-        : <FeedView history={props.history} />;
+    case 'notes':
+      return <NotesView onExit={props.onExit} />;
     case 'chat':
       return <ChatView stream={props.chatStream} isProcessing={props.isProcessing} onExit={props.onExit} />;
     case 'config':

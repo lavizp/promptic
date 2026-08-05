@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import type { AppState, ViewType, HistoryEntry } from "./types/app.js";
 import type { Todo } from "./types/todo.js";
-import type { Note } from "./types/note.js";
 import { OutputPane } from "./components/layout/OutputPane.js";
 import { InputPrompt } from "./components/layout/InputPrompt.js";
 import { parseCommand } from "./controllers/commandParser.js";
@@ -13,7 +12,6 @@ export function App() {
     currentView: 'feed',
     history: initialHistory,
     activeTodoList: [],
-    activeNote: null,
     chatStream: '',
     isProcessing: false,
     error: null,
@@ -40,7 +38,6 @@ export function App() {
           currentView={state.currentView}
           history={state.history}
           activeTodoList={state.activeTodoList}
-          activeNote={state.activeNote}
           chatStream={state.chatStream}
           isProcessing={state.isProcessing}
           error={state.error}

@@ -1,7 +1,6 @@
 import type { Todo } from './todo.js';
-import type { Note } from './note.js';
 
-export type ViewType = 'feed' | 'todos' | 'note' | 'chat' | 'config';
+export type ViewType = 'feed' | 'todos' | 'notes' | 'chat' | 'config';
 
 export interface HistoryEntry {
   id: number;
@@ -14,7 +13,6 @@ export interface AppState {
   currentView: ViewType;
   history: HistoryEntry[];
   activeTodoList: Todo[];
-  activeNote: Note | null;
   chatStream: string;
   isProcessing: boolean;
   error: string | null;

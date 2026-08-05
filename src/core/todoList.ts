@@ -1,22 +1,25 @@
-import type { Todo } from '../types/todo.js';
-
-export type TodoRow =
+export type ListRow<T> =
   | { kind: 'category'; name: string; count: number }
-  | { kind: 'todo'; todo: Todo };
+  | { kind: 'item'; item: T };
 
-export function buildRows(categories: string[], todos: Todo[]): TodoRow[] {
-  const byCategory = new Map<string, Todo[]>();
-  for (const todo of todos) {
-    const list = byCategory.get(todo.category);
-    if (list) list.push(todo);
-    else byCategory.set(todo.category, [todo]);
+export function buildRows<T>(
+  categories: string[],
+  items: T[],
+  getCategory: (item: T) => string
+): ListRow<T>[] {
+  const byCategory = new Map<string, T[]>();
+  for (const item of items) {
+    const key = getCategory(item);
+    const list = byCategory.get(key);
+    if (list) list.push(item);
+    else byCategory.set(key, [item]);
   }
 
-  const rows: TodoRow[] = [];
+  const rows: ListRow<T>[] = [];
   for (const name of categories) {
-    const items = byCategory.get(name) ?? [];
-    rows.push({ kind: 'category', name, count: items.length });
-    for (const todo of items) rows.push({ kind: 'todo', todo });
+    const list = byCategory.get(name) ?? [];
+    rows.push({ kind: 'category', name, count: list.length });
+    for (const item of list) rows.push({ kind: 'item', item });
   }
   return rows;
 }

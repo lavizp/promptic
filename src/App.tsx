@@ -5,18 +5,8 @@ import type { Note } from "./types/note.js";
 import { OutputPane } from "./components/layout/OutputPane.js";
 import { InputPrompt } from "./components/layout/InputPrompt.js";
 import { parseCommand } from "./controllers/commandParser.js";
-import { rolloverDaily } from "./core/todoEngine.js";
 
-const rolledOver = rolloverDaily();
 const initialHistory: HistoryEntry[] = [];
-if (rolledOver > 0) {
-  initialHistory.push({
-    id: 0,
-    command: 'system',
-    output: `Rolled over ${rolledOver} uncompleted daily tasks to backlog.`,
-    timestamp: new Date().toISOString(),
-  });
-}
 
 export function App() {
   const [state, setState] = useState<AppState>({

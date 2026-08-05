@@ -49,29 +49,6 @@ export async function parseCommand(
       break;
     }
 
-    case 'todo': {
-      const subCmd = args[0];
-      if (subCmd !== 'add' || !args[1]) {
-        setState(s => ({ ...s, ...addEntry(s, input, 'Usage: /todo add [work|fitness|personal] [description]') }));
-        return;
-      }
-      const rest = args.slice(1).join(' ');
-      const todoMatch = rest.match(/^(work|fitness|personal)\s+(.+)/);
-      if (!todoMatch) {
-        setState(s => ({ ...s, ...addEntry(s, input, 'Usage: /todo add [work|fitness|personal] [description]') }));
-        return;
-      }
-      const category = todoMatch[1] as 'work' | 'fitness' | 'personal';
-      const desc = todoMatch[2]!;
-      const todo = todoEngine.addTodo(desc, category);
-      setState(s => ({
-        ...s,
-        activeTodoList: todoEngine.getAllTodos(),
-        ...addEntry(s, input, `Added todo: [${todo.category}] ${todo.description}`),
-      }));
-      break;
-    }
-
     case 'todos': {
       const todos = todoEngine.getAllTodos();
       setState(s => ({ ...s, currentView: 'todos', activeTodoList: todos, error: null }));
@@ -175,8 +152,7 @@ export async function parseCommand(
       const helpText = [
         'Available commands:',
         '  /hey [prompt]        - Ask AI a question',
-        '  /todo add [cat] [desc] - Add a todo (cat: work|fitness|personal)',
-        '  /todos               - Show todo dashboard',
+        '  /todos               - Open the todos view (add/edit/open/move/delete)',
         '  /note create [title] - Create a new note',
         '  /note view [id]      - View a note',
         '  /note edit [id]      - Edit a note',
@@ -189,7 +165,7 @@ export async function parseCommand(
         '  (any other text)     - Treated as /hey',
         '',
         'In any view: Esc returns to the feed.',
-        'Todos view: ↑/↓ move · space toggle · a add · tab category in add mode.',
+        'Todos view: ↑/↓ move · space toggle · a add · e edit · enter open · m move · d delete · c new category',
       ].join('\n');
       setState(s => ({ ...s, ...addEntry(s, input, helpText) }));
       break;

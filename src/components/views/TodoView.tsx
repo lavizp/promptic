@@ -1,154 +1,308 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useKeyboard } from "@opentui/react";
-import { addTodo, getAllTodos, toggleTodo } from "../../core/todoEngine.js";
-import { flattenTodos } from "../../core/todoList.js";
-import type { Todo, TodoCategory } from "../../types/todo.js";
+import type { ScrollBoxRenderable } from "@opentui/core";
+import {
+  addCategory,
+  addTodo,
+  deleteTodo,
+  getAllTodos,
+  getCategories,
+  moveTodo,
+  removeCategory,
+  toggleTodo,
+  updateTodoDescription,
+} from "../../core/todoEngine.js";
+import { buildRows } from "../../core/todoList.js";
+import type { Todo, Category } from "../../types/todo.js";
 import { ShortcutBar } from "../shared/ShortcutBar.js";
 
-const CATEGORIES: TodoCategory[] = ['work', 'fitness', 'personal'];
+const DEFAULT_CATEGORY = 'default';
 
-type Mode = 'browse' | 'add';
+type Mode =
+  | { name: 'browse' }
+  | { name: 'addTodo'; category: string }
+  | { name: 'editTodo'; todoId: number }
+  | { name: 'addCategory' }
+  | { name: 'moveTodo'; todoId: number; pick: number }
+  | { name: 'removeCategory'; category: string }
+  | { name: 'detail'; todoId: number };
 
 interface TodoViewProps {
   onExit: () => void;
 }
 
 export function TodoView({ onExit }: TodoViewProps) {
+  const [categories, setCategories] = useState<Category[]>(() => getCategories());
   const [todos, setTodos] = useState<Todo[]>(() => getAllTodos());
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [mode, setMode] = useState<Mode>('browse');
+  const [cursor, setCursor] = useState(0);
+  const [mode, setMode] = useState<Mode>({ name: 'browse' });
   const [draft, setDraft] = useState('');
-  const [category, setCategory] = useState<TodoCategory>('work');
+  const listRef = useRef<ScrollBoxRenderable>(null);
 
-  const refresh = () => setTodos(getAllTodos());
-
-  const flat = flattenTodos(todos);
-  const selectedId = flat[selectedIndex]?.id;
-
-  useEffect(() => {
-    if (selectedIndex >= flat.length) {
-      setSelectedIndex(Math.max(0, flat.length - 1));
-    }
-  }, [flat.length, selectedIndex]);
-
-  const handleAdd = (value: string) => {
-    const desc = value.trim();
-    if (!desc) return;
-    addTodo(desc, category);
-    setDraft('');
-    setMode('browse');
-    refresh();
+  const refresh = () => {
+    setCategories(getCategories());
+    setTodos(getAllTodos());
   };
 
-  useKeyboard((key) => {
-    if (mode === 'add') {
-      if (key.name === 'escape') {
-        setDraft('');
-        setMode('browse');
-      } else if (key.name === 'tab') {
-        setCategory(c => CATEGORIES[(CATEGORIES.indexOf(c) + 1) % CATEGORIES.length]!);
-      }
-      return;
-    }
+  const backToBrowse = () => {
+    setMode({ name: 'browse' });
+    setDraft('');
+  };
 
-    switch (key.name) {
-      case 'up':
-      case 'k':
-        setSelectedIndex(i => Math.max(0, i - 1));
-        break;
-      case 'down':
-      case 'j':
-        setSelectedIndex(i => (flat.length === 0 ? 0 : Math.min(flat.length - 1, i + 1)));
-        break;
-      case 'space':
-      case 'x':
-        if (selectedId != null) {
-          toggleTodo(selectedId);
-          refresh();
+  const rows = buildRows(categories.map(c => c.name), todos);
+  const current = rows[cursor];
+
+  useEffect(() => {
+    if (cursor >= rows.length) {
+      setCursor(Math.max(0, rows.length - 1));
+    }
+  }, [rows.length, cursor]);
+
+  useEffect(() => {
+    listRef.current?.scrollChildIntoView(`todo-row-${cursor}`);
+  }, [cursor]);
+
+  const sel = (i: number) => (cursor === i ? { fg: 'black' as const, bg: 'cyan' as const } : {});
+
+  useKeyboard((key) => {
+    // Single-key shortcuts are plain presses only. The parser maps control
+    // bytes (e.g. Ctrl+D) to letter names, which must not trigger actions.
+    if (key.ctrl || key.meta) return;
+    switch (mode.name) {
+      case 'addTodo':
+      case 'editTodo':
+      case 'addCategory':
+        if (key.name === 'escape') backToBrowse();
+        return;
+
+      case 'moveTodo': {
+        if (key.name === 'escape') {
+          backToBrowse();
+        } else if (key.name === 'up' || key.name === 'k') {
+          setMode(m => m.name === 'moveTodo' ? { ...m, pick: Math.max(0, m.pick - 1) } : m);
+        } else if (key.name === 'down' || key.name === 'j') {
+          setMode(m => m.name === 'moveTodo' ? { ...m, pick: Math.min(categories.length - 1, m.pick + 1) } : m);
+        } else if (key.name === 'return') {
+          const cat = categories[mode.pick];
+          if (cat) {
+            moveTodo(mode.todoId, cat.name);
+            refresh();
+          }
+          backToBrowse();
         }
-        break;
-      case 'a':
-        setDraft('');
-        setCategory('work');
-        setMode('add');
-        break;
-      case 'escape':
-        onExit();
-        break;
+        return;
+      }
+
+      case 'removeCategory': {
+        if (key.name === 'y') {
+          removeCategory(mode.category);
+          refresh();
+          backToBrowse();
+        } else if (key.name === 'n' || key.name === 'escape') {
+          backToBrowse();
+        }
+        return;
+      }
+
+      case 'detail': {
+        if (key.name === 'escape' || key.name === 'return' || key.name === 'space') backToBrowse();
+        return;
+      }
+
+      case 'browse': {
+        switch (key.name) {
+          case 'up':
+          case 'k':
+            setCursor(i => Math.max(0, i - 1));
+            break;
+          case 'down':
+          case 'j':
+            setCursor(i => Math.min(rows.length - 1, i + 1));
+            break;
+          case 'space':
+          case 'x':
+            if (current?.kind === 'todo') {
+              toggleTodo(current.todo.id);
+              refresh();
+            }
+            break;
+          case 'a': {
+            const target = current?.kind === 'category'
+              ? current.name
+              : current?.kind === 'todo'
+                ? current.todo.category
+                : DEFAULT_CATEGORY;
+            setDraft('');
+            setMode({ name: 'addTodo', category: target });
+            break;
+          }
+          case 'e':
+            if (current?.kind === 'todo') {
+              setDraft(current.todo.description);
+              setMode({ name: 'editTodo', todoId: current.todo.id });
+            }
+            break;
+          case 'return':
+            if (current?.kind === 'todo') setMode({ name: 'detail', todoId: current.todo.id });
+            break;
+          case 'm':
+            if (current?.kind === 'todo') setMode({ name: 'moveTodo', todoId: current.todo.id, pick: 0 });
+            break;
+          case 'd':
+            if (current?.kind === 'todo') {
+              deleteTodo(current.todo.id);
+              refresh();
+            } else if (current?.kind === 'category' && current.name !== DEFAULT_CATEGORY) {
+              setMode({ name: 'removeCategory', category: current.name });
+            }
+            break;
+          case 'c':
+            setDraft('');
+            setMode({ name: 'addCategory' });
+            break;
+          case 'escape':
+            onExit();
+            break;
+        }
+        return;
+      }
     }
   });
 
-  const grouped: Record<TodoCategory, Todo[]> = { work: [], fitness: [], personal: [] };
-  for (const t of todos) grouped[t.category].push(t);
-  const backlog = todos.filter(t => t.type === 'backlog');
-
-  const dailyRow = (todo: Todo) => {
-    if (todo.id === selectedId) {
-      return <text fg="black" bg="cyan">▸ {todo.status === 'completed' ? '☑' : '☐'} {todo.description}</text>;
-    }
-    return <text>  {todo.status === 'completed' ? '☑' : '☐'} {todo.description}</text>;
-  };
-
-  const backlogRow = (todo: Todo) => {
-    if (todo.id === selectedId) {
-      return <text fg="black" bg="cyan">▸ {todo.description}</text>;
-    }
-    return <text fg="gray">  {todo.description}</text>;
-  };
-
   return (
-    <box flexDirection="column" flexGrow={1} padding={1}>
-      <box flexGrow={1} flexDirection="row">
-        <box flexGrow={1} flexDirection="column">
-          <text><b>Daily Tasks</b></text>
-          {CATEGORIES.map(cat => (
-            <box key={cat} marginTop={1}>
-              <text fg="yellow">{cat.toUpperCase()}</text>
-              {grouped[cat].filter(t => t.type === 'daily').length === 0 && (
-                <text fg="gray">  No tasks</text>
-              )}
-              {grouped[cat].filter(t => t.type === 'daily').map(todo => (
-                <box key={todo.id} marginLeft={1}>{dailyRow(todo)}</box>
-              ))}
+    <box flexDirection="column" flexGrow={1}>
+      <scrollbox ref={listRef} scrollY flexGrow={1} padding={1}>
+        {rows.length === 0 && <text fg="gray">No categories yet. Press c to create one.</text>}
+        {rows.map((row, i) =>
+          row.kind === 'category' ? (
+            <box key={`cat-${row.name}`} id={`todo-row-${i}`} marginTop={i === 0 ? 0 : 1}>
+              <text {...sel(i)}>{cursor === i ? '▸ ' : '  '}{row.name.toUpperCase()} ({row.count})</text>
             </box>
-          ))}
-        </box>
-        <box flexGrow={1} flexDirection="column" marginLeft={2}>
-          <text><b>Backlog</b></text>
-          {backlog.length === 0 && <text fg="gray">  No backlog tasks</text>}
-          {backlog.map(todo => (
-            <box key={todo.id}>{backlogRow(todo)}</box>
-          ))}
-        </box>
-      </box>
+          ) : (
+            <box key={`todo-${row.todo.id}`} id={`todo-row-${i}`} marginLeft={1}>
+              <text {...sel(i)}>
+                {cursor === i ? '▸ ' : '  '}
+                {row.todo.status === 'completed' ? '☑' : '☐'} {row.todo.description}
+              </text>
+            </box>
+          )
+        )}
+      </scrollbox>
 
-      {mode === 'add' && (
+      {mode.name === 'addTodo' && (
         <box marginTop={1} flexDirection="row">
-          <text fg="cyan">[{category}]</text>
+          <text fg="cyan">[{mode.category}]</text>
           <input
             value={draft}
             onInput={(v) => setDraft(v)}
-            onSubmit={(v) => handleAdd(String(v))}
+            onSubmit={(v) => {
+              const desc = String(v).trim();
+              if (desc) {
+                addTodo(desc, mode.category);
+                refresh();
+              }
+              backToBrowse();
+            }}
             placeholder="New todo description…"
             focused
           />
         </box>
       )}
 
-      <ShortcutBar
-        hints={mode === 'add'
-          ? [
-              { key: 'tab', label: 'category' },
-              { key: 'enter', label: 'save' },
-              { key: 'esc', label: 'cancel' },
-            ]
-          : [
-              { key: '↑/↓', label: 'move' },
-              { key: 'space', label: 'toggle' },
-              { key: 'a', label: 'add' },
-              { key: 'esc', label: 'back' },
-            ]}
-      />
+      {mode.name === 'editTodo' && (
+        <box marginTop={1} flexDirection="row">
+          <text fg="cyan">[edit]</text>
+          <input
+            value={draft}
+            onInput={(v) => setDraft(v)}
+            onSubmit={(v) => {
+              const desc = String(v).trim();
+              if (desc) {
+                updateTodoDescription(mode.todoId, desc);
+                refresh();
+              }
+              backToBrowse();
+            }}
+            placeholder="Edit description…"
+            focused
+          />
+        </box>
+      )}
+
+      {mode.name === 'addCategory' && (
+        <box marginTop={1} flexDirection="row">
+          <text fg="cyan">[category]</text>
+          <input
+            value={draft}
+            onInput={(v) => setDraft(v)}
+            onSubmit={(v) => {
+              const name = String(v).trim();
+              if (name) {
+                addCategory(name);
+                refresh();
+              }
+              backToBrowse();
+            }}
+            placeholder="New category name…"
+            focused
+          />
+        </box>
+      )}
+
+      {mode.name === 'moveTodo' && (
+        <box marginTop={1} flexShrink={0} flexDirection="column">
+          <text fg="gray">Move to category:</text>
+          {categories.map((cat, i) => (
+            <text key={cat.name} fg={i === mode.pick ? 'cyan' : 'gray'}>
+              {i === mode.pick ? '▸ ' : '  '}{cat.name}
+            </text>
+          ))}
+        </box>
+      )}
+
+      {mode.name === 'removeCategory' && (
+        <box marginTop={1}>
+          <text fg="yellow">Remove category '{mode.category}' and move its todos to default? [y/n]</text>
+        </box>
+      )}
+
+      {mode.name === 'detail' && (() => {
+        const todo = todos.find(t => t.id === mode.todoId);
+        if (!todo) return null;
+        return (
+          <box marginTop={1} flexShrink={0} borderStyle="single" borderColor="cyan" padding={1} flexDirection="column">
+            <text><b>{todo.description}</b></text>
+            <text fg="gray">Category: {todo.category}</text>
+            <text fg="gray">Status: {todo.status}</text>
+            <text fg="gray">Created: {todo.created_at}</text>
+            {todo.completed_at && <text fg="gray">Completed: {todo.completed_at}</text>}
+          </box>
+        );
+      })()}
+
+      {mode.name === 'browse' && (
+        <>
+          <ShortcutBar hints={[
+            { key: '↑/↓', label: 'move' },
+            { key: 'space', label: 'toggle' },
+            { key: 'a', label: 'add' },
+            { key: 'e', label: 'edit' },
+            { key: 'enter', label: 'open' },
+          ]} />
+          <ShortcutBar hints={[
+            { key: 'm', label: 'move' },
+            { key: 'd', label: 'delete' },
+            { key: 'c', label: 'category' },
+            { key: 'esc', label: 'back' },
+          ]} />
+        </>
+      )}
+      {mode.name === 'addTodo' && <ShortcutBar hints={[{ key: 'enter', label: 'save' }, { key: 'esc', label: 'cancel' }]} />}
+      {mode.name === 'editTodo' && <ShortcutBar hints={[{ key: 'enter', label: 'save' }, { key: 'esc', label: 'cancel' }]} />}
+      {mode.name === 'addCategory' && <ShortcutBar hints={[{ key: 'enter', label: 'save' }, { key: 'esc', label: 'cancel' }]} />}
+      {mode.name === 'moveTodo' && <ShortcutBar hints={[{ key: '↑/↓', label: 'pick' }, { key: 'enter', label: 'move' }, { key: 'esc', label: 'cancel' }]} />}
+      {mode.name === 'removeCategory' && <ShortcutBar hints={[{ key: 'y', label: 'confirm' }, { key: 'n', label: 'cancel' }]} />}
+      {mode.name === 'detail' && <ShortcutBar hints={[{ key: 'esc', label: 'close' }]} />}
     </box>
   );
 }

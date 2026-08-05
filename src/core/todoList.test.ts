@@ -1,48 +1,46 @@
 import { describe, it, expect } from "vitest";
-import { flattenTodos } from "./todoList.ts";
+import { buildRows } from "./todoList.ts";
 import type { Todo } from "../types/todo.ts";
 
-const todo = (id: number, category: string, type: string, status: string): Todo => ({
+const todo = (id: number, category: string, status: string = 'pending'): Todo => ({
   id,
   description: `task ${id}`,
-  category: category as Todo['category'],
-  type: type as Todo['type'],
+  category,
   status: status as Todo['status'],
   created_at: `2026-01-01 00:00:0${id}`,
   completed_at: null,
 });
 
-describe("flattenTodos", () => {
-  it("returns daily todos grouped by category in order", () => {
-    const todos = [
-      todo(1, 'fitness', 'daily', 'pending'),
-      todo(2, 'work', 'daily', 'pending'),
-      todo(3, 'personal', 'daily', 'pending'),
-      todo(4, 'work', 'daily', 'completed'),
-    ];
-    expect(flattenTodos(todos).map(t => t.id)).toEqual([2, 4, 1, 3]);
+describe("buildRows", () => {
+  it("emits a category header followed by its todos, in category order", () => {
+    const rows = buildRows(['default', 'work'], [
+      todo(1, 'work'),
+      todo(2, 'default'),
+    ]);
+    expect(rows).toEqual([
+      { kind: 'category', name: 'default', count: 1 },
+      { kind: 'todo', todo: expect.objectContaining({ id: 2 }) },
+      { kind: 'category', name: 'work', count: 1 },
+      { kind: 'todo', todo: expect.objectContaining({ id: 1 }) },
+    ]);
   });
 
-  it("places backlog after all daily todos", () => {
-    const todos = [
-      todo(1, 'work', 'backlog', 'pending'),
-      todo(2, 'personal', 'daily', 'pending'),
-      todo(3, 'fitness', 'backlog', 'pending'),
-    ];
-    expect(flattenTodos(todos).map(t => t.id)).toEqual([2, 1, 3]);
+  it("keeps todo order as given within each category", () => {
+    const rows = buildRows(['work'], [todo(3, 'work'), todo(1, 'work'), todo(2, 'work')]);
+    const todos = rows.filter(r => r.kind === 'todo').map(r => (r.kind === 'todo' ? r.todo.id : -1));
+    expect(todos).toEqual([3, 1, 2]);
   });
 
-  it("keeps relative order within each group", () => {
-    const todos = [
-      todo(1, 'work', 'daily', 'pending'),
-      todo(2, 'work', 'daily', 'pending'),
-      todo(3, 'work', 'backlog', 'pending'),
-      todo(4, 'work', 'backlog', 'pending'),
-    ];
-    expect(flattenTodos(todos).map(t => t.id)).toEqual([1, 2, 3, 4]);
+  it("renders a header-only section for empty categories", () => {
+    const rows = buildRows(['default', 'empty'], [todo(1, 'default')]);
+    expect(rows).toEqual([
+      { kind: 'category', name: 'default', count: 1 },
+      { kind: 'todo', todo: expect.objectContaining({ id: 1 }) },
+      { kind: 'category', name: 'empty', count: 0 },
+    ]);
   });
 
-  it("returns an empty list for no todos", () => {
-    expect(flattenTodos([])).toEqual([]);
+  it("returns no rows for no categories", () => {
+    expect(buildRows([], [todo(1, 'work')])).toEqual([]);
   });
 });

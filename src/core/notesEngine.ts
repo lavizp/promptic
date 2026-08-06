@@ -53,7 +53,7 @@ export async function createNote(title: string, category: string = DEFAULT_NOTE_
   ensureNoteCategory(getDb(), category);
   const id = generateId();
   const now = new Date().toISOString();
-  const meta: NoteMeta = { id, title, category, tags: [], created_at: now, updated_at: now };
+  const meta: NoteMeta = { id, title, category, created_at: now, updated_at: now };
   await fs.writeFile(filePath(id), serializeNote(meta, content), 'utf-8');
   return (await getNoteById(id))!;
 }
@@ -65,16 +65,6 @@ export async function getNoteById(id: string): Promise<Note | undefined> {
   } catch {
     return undefined;
   }
-}
-
-export async function getNoteByTitle(title: string): Promise<Note | undefined> {
-  await ensureNotesDir();
-  for (const file of await fs.readdir(NOTES_DIR)) {
-    if (!file.endsWith('.md')) continue;
-    const parsed = parseNoteFile(await fs.readFile(path.join(NOTES_DIR, file), 'utf-8'), file.replace('.md', ''));
-    if (parsed?.meta.title === title) return parsed;
-  }
-  return undefined;
 }
 
 export async function getAllNotes(): Promise<Note[]> {
@@ -93,7 +83,6 @@ export interface NoteUpdate {
   title?: string;
   category?: string;
   content?: string;
-  tags?: string[];
 }
 
 export async function updateNote(id: string, changes: NoteUpdate): Promise<Note> {
@@ -104,16 +93,11 @@ export async function updateNote(id: string, changes: NoteUpdate): Promise<Note>
     ...note.meta,
     title: changes.title?.trim() || note.meta.title,
     category: changes.category ?? note.meta.category,
-    tags: changes.tags ?? note.meta.tags,
     updated_at: new Date().toISOString(),
   };
   const content = changes.content ?? note.content;
   await fs.writeFile(filePath(id), serializeNote(meta, content), 'utf-8');
   return (await getNoteById(id))!;
-}
-
-export async function updateNoteTags(id: string, tags: string[]): Promise<void> {
-  await updateNote(id, { tags });
 }
 
 export async function deleteNote(id: string): Promise<void> {

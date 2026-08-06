@@ -2,7 +2,6 @@ export interface NoteMeta {
   id: string;
   title: string;
   category: string;
-  tags: string[];
   created_at: string;
   updated_at: string;
 }
@@ -10,5 +9,4 @@ export interface NoteMeta {
 export interface Note {
   meta: NoteMeta;
   content: string;
-  backlinks: string[];
 }

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.resolve(__dirname, '../../db/brain.sqlite');
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 let db: Database | null = null;
 
@@ -50,13 +50,6 @@ function initSchema(db: Database) {
       scheduled_at TEXT NOT NULL,
       created_at  TEXT NOT NULL DEFAULT (datetime('now')),
       triggered   INTEGER NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS links (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      source_note_id TEXT NOT NULL,
-      target_note_id TEXT NOT NULL,
-      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS meta (
@@ -108,6 +101,11 @@ function migrate(db: Database) {
       );
       INSERT OR IGNORE INTO note_categories (name) VALUES ('default');
     `);
+  }
+
+  if (version < 4) {
+    // The link/wiki feature was removed.
+    db.exec(`DROP TABLE IF EXISTS links;`);
   }
 
   db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)').run('schema_version', String(SCHEMA_VERSION));

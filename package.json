@@ -1,11 +1,11 @@
 {
-  "name": "promptic",
+  "name": "promptic-cli",
   "version": "1.0.0",
   "description": "A Prompt Enhancing CLI tool",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "my-command": "./bin/cli.js"
+    "promptic-cli": "./bin/cli.js"
   },
   "files": [
     "dist",

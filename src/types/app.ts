@@ -1,6 +1,6 @@
 import type { Todo } from './todo.js';
 
-export type ViewType = 'feed' | 'todos' | 'notes' | 'chat' | 'config';
+export type ViewType = 'feed' | 'todos' | 'notes' | 'reminders' | 'chat' | 'config';
 
 export interface HistoryEntry {
   id: number;

@@ -13,7 +13,7 @@ A multi-provider AI prompt CLI with optional web search augmentation.
 ## Install
 
 ```bash
-npm install -g promptic
+npm install -g promptic-cli
 ```
 
 Or clone and build locally:
@@ -29,13 +29,13 @@ npm run build
 
 ```bash
 # Run in normal mode
-promptic run
+promptic-cli run
 
 # Run with web search augmentation
-promptic run --web
+promptic-cli run --web
 
 # Configure API provider and keys
-promptic config
+promptic-cli config
 ```
 
 The CLI will walk you through selecting an AI provider and entering your API key. Keys are saved persistently so you only need to do this once.
@@ -55,7 +55,7 @@ When `--web` is passed, Promptic fetches relevant web search results via Tavily 
 
 ## Configuration
 
-API keys are stored in a local persistent store (managed by [`conf`](https://github.com/sindresorhus/conf)). You can reconfigure at any time by running `promptic config`.
+API keys are stored in a local persistent store (managed by [`conf`](https://github.com/sindresorhus/conf)). You can reconfigure at any time by running `promptic-cli config`.
 
 ## Development
 

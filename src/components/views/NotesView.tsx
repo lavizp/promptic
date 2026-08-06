@@ -11,11 +11,9 @@ import {
   removeNoteCategory,
   updateNote,
 } from "../../core/notesEngine.js";
-import { getBacklinks } from "../../core/linkEngine.js";
 import { buildRows } from "../../core/todoList.js";
 import type { Note } from "../../types/note.js";
 import type { Category } from "../../types/todo.js";
-import { Tag } from "../shared/Tag.js";
 import { ShortcutBar } from "../shared/ShortcutBar.js";
 
 const DEFAULT_CATEGORY = 'default';
@@ -37,7 +35,6 @@ interface NotesViewProps {
 export function NotesView({ onExit }: NotesViewProps) {
   const [categories, setCategories] = useState<Category[]>(() => getNoteCategories());
   const [notes, setNotes] = useState<Note[]>([]);
-  const [backlinks, setBacklinks] = useState<string[]>([]);
   const [cursor, setCursor] = useState(0);
   const [mode, setMode] = useState<Mode>({ name: 'list' });
   const [draft, setDraft] = useState('');
@@ -82,7 +79,6 @@ export function NotesView({ onExit }: NotesViewProps) {
   const enterEditor = (noteId: string) => {
     const note = notes.find(n => n.meta.id === noteId);
     setEditorSnapshot(note?.content ?? '');
-    setBacklinks(getBacklinks(noteId));
     setEditPane('write');
     setMode({ name: 'editContent', noteId });
   };
@@ -227,22 +223,8 @@ export function NotesView({ onExit }: NotesViewProps) {
         if (editPane === 'preview') {
           return (
             <scrollbox scrollY flexGrow={1} padding={1}>
-              <box flexDirection="row" gap={1} marginBottom={1}>
-                {note.meta.tags.map(tag => (
-                  <Tag key={tag} label={tag} />
-                ))}
-              </box>
               <text><b>{note.meta.title}</b></text>
               <markdown content={editorSnapshot} syntaxStyle={syntaxStyle} conceal />
-              {backlinks.length > 0 && (
-                <>
-                  <text fg="gray">---</text>
-                  <text><b>Linked Mentions</b></text>
-                  {backlinks.map(link => (
-                    <text key={link} fg="cyan">{link}</text>
-                  ))}
-                </>
-              )}
             </scrollbox>
           );
         }

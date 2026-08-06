@@ -45,7 +45,7 @@ export function App() {
           onExit={exitToFeed}
         />
       </box>
-      <box height={3} borderStyle="single" borderColor="gray">
+      <box height={3} borderStyle="rounded" borderColor="cyan" title=" promptic-cli ">
         <InputPrompt onSubmit={handleCommand} isProcessing={state.isProcessing} focused={commandBarFocused} />
       </box>
     </box>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useKeyboard } from "@opentui/react";
 import type { SelectOption } from "@opentui/core";
 import { envStore } from "../../config/envConfig/envConfig.js";
+import { providerConfig } from "../../ai/config.js";
 import { ShortcutBar } from "../shared/ShortcutBar.js";
 
 const PROVIDER_OPTIONS = [
@@ -19,58 +20,120 @@ const API_KEY_NAMES: Record<string, string> = {
 };
 
 type Field = 'provider' | 'key';
+type StatusKind = 'ok' | 'error' | 'info';
+
+function maskKey(key: string): string {
+  if (key.length <= 8) return `••••${key.slice(-4)}`;
+  return `${key.slice(0, 4)}••••${key.slice(-4)}`;
+}
 
 interface ConfigViewProps {
   onExit: () => void;
 }
 
 export function ConfigView({ onExit }: ConfigViewProps) {
-  const activeProvider = envStore.get('ai_provider') || 'openai';
-  const [selectedProvider, setSelectedProvider] = useState(activeProvider);
+  const [activeProvider, setActiveProvider] = useState(() => envStore.get('ai_provider') || 'openai');
+  const [browsedProvider, setBrowsedProvider] = useState(activeProvider);
   const [apiKey, setApiKey] = useState('');
   const [status, setStatus] = useState('');
+  const [statusKind, setStatusKind] = useState<StatusKind>('info');
   const [field, setField] = useState<Field>('provider');
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
-  // Field-level focus is exclusive: exactly one widget is focused at a time,
-  // and the global command bar is blurred while this view is mounted.
-  useKeyboard((key) => {
-    if (key.name === 'escape') {
-      onExit();
-    } else if (key.name === 'tab') {
-      setField((f) => (f === 'provider' ? 'key' : 'provider'));
-    }
+  const browsedKeyName = API_KEY_NAMES[browsedProvider] ?? '';
+  const browsedHasKey = envStore.has(browsedKeyName);
+  const activeHasKey = envStore.has(API_KEY_NAMES[activeProvider] ?? '');
+  const browsedName = PROVIDER_OPTIONS.find(o => o.value === browsedProvider)?.name ?? browsedProvider;
+  const activeModel = providerConfig[activeProvider as keyof typeof providerConfig]?.model;
+
+  const options: SelectOption[] = PROVIDER_OPTIONS.map((o) => {
+    const parts = [
+      o.model,
+      o.value === activeProvider ? '✓ ACTIVE' : '',
+      envStore.has(API_KEY_NAMES[o.value]!) ? '✓ key' : '· no key',
+    ].filter(Boolean);
+    return { name: o.name, description: parts.join('  ·  '), value: o.value };
   });
+  const selectedIndex = Math.max(0, options.findIndex(o => o.value === browsedProvider));
 
-  // Rebuilt each render so the ✓ / · key-status stays in sync after a save.
-  const options: SelectOption[] = PROVIDER_OPTIONS.map((o) => ({
-    name: o.name,
-    description: `${o.model}   ${envStore.has(API_KEY_NAMES[o.value]!) ? '✓ key set' : '· no key'}`,
-    value: o.value,
-  }));
-  const selectedIndex = Math.max(0, options.findIndex((o) => o.value === selectedProvider));
+  const setStatusLine = (msg: string, kind: StatusKind = 'info') => {
+    setStatus(msg);
+    setStatusKind(kind);
+  };
 
   const handleProviderHighlight = (_index: number, option: SelectOption | null) => {
-    if (option) setSelectedProvider(String(option.value));
+    if (option) {
+      setBrowsedProvider(String(option.value));
+      setStatus('');
+      setConfirmRemove(false);
+    }
   };
 
   const handleProviderSelect = (_index: number, option: SelectOption | null) => {
     if (!option) return;
     const value = String(option.value);
-    setSelectedProvider(value);
+    setActiveProvider(value);
     envStore.set('ai_provider', value);
-    setStatus(`Active provider set to ${value}`);
+    setStatusLine(`Active provider set to ${value}`, 'ok');
+    setConfirmRemove(false);
+    setField('key');
   };
 
   const handleSetKey = (value: string) => {
     const trimmed = value.trim();
-    if (!trimmed) return;
-    const keyName = API_KEY_NAMES[selectedProvider];
-    if (keyName) {
-      envStore.set(keyName, trimmed);
-      setStatus(`API key saved for ${selectedProvider}`);
+    if (!trimmed) {
+      setStatusLine(`Paste a key for ${browsedName} first`, 'error');
+      return;
     }
+    envStore.set(browsedKeyName, trimmed);
+    setStatusLine(`API key saved for ${browsedName}`, 'ok');
     setApiKey('');
   };
+
+  const handleRemoveKey = () => {
+    if (!browsedHasKey) return;
+    setConfirmRemove(true);
+    setStatus('');
+  };
+
+  useKeyboard((key) => {
+    if (key.name === 'escape') {
+      if (confirmRemove) {
+        setConfirmRemove(false);
+        return;
+      }
+      // First Esc while typing a key just blurs to the provider field instead
+      // of losing the draft; a second Esc leaves the view.
+      if (field === 'key' && apiKey.trim()) {
+        setField('provider');
+        return;
+      }
+      onExit();
+      return;
+    }
+
+    if (confirmRemove) {
+      if (key.name === 'y') {
+        envStore.delete(browsedKeyName);
+        setStatusLine(`API key removed for ${browsedName}`, 'ok');
+        setConfirmRemove(false);
+      } else if (key.name === 'n') {
+        setConfirmRemove(false);
+      }
+      return;
+    }
+
+    if (key.name === 'tab') {
+      setField(f => (f === 'provider' ? 'key' : 'provider'));
+      return;
+    }
+
+    // Only bound on the provider field so 'r' can still be typed in keys.
+    if (field === 'provider' && key.name === 'r') {
+      handleRemoveKey();
+      return;
+    }
+  });
 
   return (
     <box flexDirection="column" padding={1}>
@@ -97,33 +160,55 @@ export function ConfigView({ onExit }: ConfigViewProps) {
             selectedBackgroundColor="#1f2937"
             focused={field === 'provider'}
           />
-          <text fg="gray">  ↑/↓ to browse · Enter to activate</text>
         </box>
 
         <box>
           <text fg={field === 'key' ? 'cyan' : 'gray'}>
-            {field === 'key' ? '▸ ' : '  '}API Key for {selectedProvider}
+            {field === 'key' ? '▸ ' : '  '}API key for {browsedName} ({browsedKeyName})
           </text>
           <input
             value={apiKey}
-            onChange={(v) => setApiKey(v as string)}
-            onSubmit={(v) => { if (typeof v === 'string') handleSetKey(v); }}
-            placeholder={`Paste ${API_KEY_NAMES[selectedProvider] ?? 'API'} key, then Enter…`}
+            onInput={(v) => setApiKey(v)}
+            onSubmit={(v) => handleSetKey(String(v))}
+            placeholder={`Paste ${browsedKeyName}…`}
             focused={field === 'key'}
           />
+          {browsedHasKey
+            ? <text fg="gray">Saved: {maskKey(envStore.get(browsedKeyName) ?? '')}</text>
+            : <text fg="gray">· no key set</text>}
         </box>
       </box>
 
       <box marginTop={1} flexDirection="column">
-        {status
-          ? <text fg="green">✓ {status}</text>
-          : <text fg="gray">Active: {activeProvider}</text>}
-        <ShortcutBar
-          hints={[
-            { key: 'tab', label: 'switch field' },
+        {confirmRemove && (
+          <text fg="yellow">Remove the API key for {browsedName}? [y/n]</text>
+        )}
+        {!confirmRemove && status && (
+          <text fg={statusKind === 'ok' ? 'green' : statusKind === 'error' ? 'red' : 'gray'}>
+            {statusKind === 'ok' ? '✓ ' : ''}{status}
+          </text>
+        )}
+        {!activeHasKey && (
+          <text fg="yellow">⚠ {activeProvider} is active but has no API key — /hey will fail</text>
+        )}
+        <text fg="gray">Active: {activeProvider} ({activeModel ?? 'unknown model'})</text>
+        {confirmRemove ? (
+          <ShortcutBar hints={[{ key: 'y', label: 'remove' }, { key: 'n', label: 'cancel' }]} />
+        ) : field === 'provider' ? (
+          <ShortcutBar hints={[
+            { key: '↑/↓', label: 'browse' },
+            { key: 'enter', label: 'activate' },
+            ...(browsedHasKey ? [{ key: 'r', label: 'remove key' }] : []),
+            { key: 'tab', label: 'key' },
             { key: 'esc', label: 'back' },
-          ]}
-        />
+          ]} />
+        ) : (
+          <ShortcutBar hints={[
+            { key: 'enter', label: 'save' },
+            { key: 'tab', label: 'provider' },
+            { key: 'esc', label: 'back' },
+          ]} />
+        )}
       </box>
     </box>
   );

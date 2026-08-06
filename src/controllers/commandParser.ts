@@ -1,10 +1,17 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { AppState, HistoryEntry } from "../types/app.js";
 import * as todoEngine from "../core/todoEngine.js";
-import * as notesEngine from "../core/notesEngine.js";
-import * as linkEngine from "../core/linkEngine.js";
 import * as reminderEngine from "../core/reminderEngine.js";
+import {
+  formatOffset,
+  formatReminderTime,
+  parseDateField,
+  parseReminderJson,
+  parseTimeField,
+  resolveDateTime,
+} from "../core/reminderTime.js";
 import { generate } from "../core/llm.js";
+import { reminderParsePrompt } from "../ai/prompts/system.js";
 
 let historyIdCounter = 1;
 
@@ -60,51 +67,46 @@ export async function parseCommand(
       break;
     }
 
-    case 'tag': {
-      const [noteId, ...tagParts] = args;
-      const tag = tagParts.join(' ');
-      if (!noteId || !tag) {
-        setState(s => ({ ...s, ...addEntry(s, input, 'Usage: /tag [note_id] [tag_name]') }));
+    case 'reminders': {
+      setState(s => ({ ...s, currentView: 'reminders', error: null }));
+      break;
+    }
+
+    case 'remind-me': {
+      if (!argStr) {
+        setState(s => ({ ...s, ...addEntry(s, input, 'Usage: /remind-me [text] - e.g. Remind me to call Bill tomorrow at 4PM') }));
         return;
       }
+      const now = new Date();
       try {
-        const note = await notesEngine.getNoteById(noteId);
-        if (!note) {
-          setState(s => ({ ...s, ...addEntry(s, input, `Note not found: ${noteId}`) }));
+        const raw = await generate(argStr, {
+          systemPrompt: reminderParsePrompt(now.toISOString(), formatOffset(now)),
+        });
+        const parsed = parseReminderJson(raw);
+        if (!parsed) {
+          setState(s => ({ ...s, ...addEntry(s, input, 'Could not parse a reminder from the response. Please include a date and/or time.') }));
           return;
         }
-        const newTags = [...new Set([...note.meta.tags, tag])];
-        await notesEngine.updateNoteTags(noteId, newTags);
-        setState(s => ({ ...s, ...addEntry(s, input, `Tagged note ${noteId} with #${tag}`) }));
+        const dateParts = parsed.date ? parseDateField(parsed.date, now) : null;
+        const timeParts = parsed.time ? parseTimeField(parsed.time) : null;
+        if (parsed.date && !dateParts) {
+          setState(s => ({ ...s, ...addEntry(s, input, `Invalid date from AI: ${parsed.date}`) }));
+          return;
+        }
+        if (parsed.time && !timeParts) {
+          setState(s => ({ ...s, ...addEntry(s, input, `Invalid time from AI: ${parsed.time}`) }));
+          return;
+        }
+        const resolved = resolveDateTime(dateParts, timeParts, now);
+        if (!resolved.ok) {
+          setState(s => ({ ...s, ...addEntry(s, input, resolved.error) }));
+          return;
+        }
+        const reminder = reminderEngine.addReminder(parsed.message, resolved.iso);
+        setState(s => ({ ...s, ...addEntry(s, input, `Reminder set for ${formatReminderTime(reminder.scheduled_at)}: ${reminder.message}`) }));
       } catch (err: any) {
         setState(s => ({ ...s, error: err.message }));
       }
-      break;
-    }
-
-    case 'link': {
-      const [sourceId, targetId] = args;
-      if (!sourceId || !targetId) {
-        setState(s => ({ ...s, ...addEntry(s, input, 'Usage: /link [source_note_id] [target_note_id]') }));
-        return;
-      }
-      try {
-        linkEngine.addLink(sourceId, targetId);
-        setState(s => ({ ...s, ...addEntry(s, input, `Linked ${sourceId} → ${targetId}`) }));
-      } catch (err: any) {
-        setState(s => ({ ...s, error: err.message }));
-      }
-      break;
-    }
-
-    case 'reminder': {
-      if (!argStr) {
-        setState(s => ({ ...s, ...addEntry(s, input, 'Usage: /reminder [message] - Sets a reminder for 1 hour from now.') }));
-        return;
-      }
-      const scheduledAt = new Date(Date.now() + 3600000).toISOString();
-      const reminder = reminderEngine.addReminder(argStr, scheduledAt);
-      setState(s => ({ ...s, ...addEntry(s, input, `Reminder set for ${new Date(reminder.scheduled_at).toLocaleString()}: ${reminder.message}`) }));
       break;
     }
 
@@ -118,10 +120,9 @@ export async function parseCommand(
         'Available commands:',
         '  /hey [prompt]        - Ask AI a question',
         '  /todos               - Open the todos view (add/edit/open/move/delete)',
-        '  /notes               - Open the notes view (add/edit/open/move/delete)',
-        '  /tag [note_id] [tag] - Add a tag to a note',
-        '  /link [source] [target] - Link two notes',
-        '  /reminder [message]  - Set a reminder',
+        '  /notes               - Open the notes view (add/edit/move/delete)',
+        '  /reminders           - Open the reminders view (add/edit/done/delete)',
+        '  /remind-me [text]    - Add a reminder from natural language (e.g. call Bill tomorrow at 4PM)',
         '  /config              - Configure AI provider & keys',
         '  /clear               - Clear history',
         '  /help                - Show this help',
@@ -130,6 +131,7 @@ export async function parseCommand(
         'In any view: Esc returns to the feed.',
         'Todos view: ↑/↓ move · space toggle · a add · e edit · enter open · m move · d delete · c new category',
         'Notes view: ↑/↓ move · a add · e title · enter edit (tab preview · ctrl+s save) · m move · d delete · c new category',
+        'Reminders: ↑/↓ move · space done · a add · e edit · d delete',
       ].join('\n');
       setState(s => ({ ...s, ...addEntry(s, input, helpText) }));
       break;

@@ -1,11 +1,11 @@
 {
-  "name": "promptic",
+  "name": "promptic-cli",
   "version": "1.0.0",
   "description": "A Prompt Enhancing CLI tool",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "my-command": "./bin/cli.js"
+    "promptic-cli": "./bin/cli.js"
   },
   "files": [
     "dist",
@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "start": "tsx src/index.ts",
+    "start": "bun src/index.tsx",
     "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -30,10 +30,9 @@
   },
   "homepage": "https://github.com/lavizp/promptic#readme",
   "devDependencies": {
-    "@types/inquirer": "^9.0.9",
-
-    "@types/marked-terminal": "^6.1.1",
     "@types/node": "^25.3.3",
+    "@types/react": "^19.2.17",
+    "bun-types": "^1.3.14",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
@@ -42,16 +41,14 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
     "@google/generative-ai": "^0.24.1",
-    "@inquirer/prompts": "^8.5.1",
+    "@opentui/core": "^0.4.5",
+    "@opentui/core-linux-x64": "^0.4.5",
+    "@opentui/react": "^0.4.5",
     "@tavily/core": "^0.7.3",
-    "chalk": "^5.6.2",
-    "commander": "^15.0.0",
     "conf": "^15.1.0",
     "dotenv": "^17.4.2",
     "groq-sdk": "^1.2.1",
-    "inquirer": "^13.3.0",
-    "marked": "^15.0.0",
-    "marked-terminal": "^7.3.0",
-    "openai": "^6.41.0"
+    "openai": "^6.41.0",
+    "react": "^19.2.7"
   }
 }

@@ -9,7 +9,7 @@
     "module": "nodenext",
     "target": "esnext",
     "types": [
-      "node"
+      "bun-types"
     ],
     // For nodejs:
     // "lib": ["esnext"],
@@ -34,6 +34,7 @@
     // Recommended Options
     "strict": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/react",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,

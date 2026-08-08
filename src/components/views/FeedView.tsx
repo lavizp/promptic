@@ -1,4 +1,5 @@
 import type { HistoryEntry } from "../../types/app.js";
+import { HomeView } from "./HomeView.js";
 
 interface FeedViewProps {
   history: HistoryEntry[];
@@ -6,12 +7,7 @@ interface FeedViewProps {
 
 export function FeedView({ history }: FeedViewProps) {
   if (history.length === 0) {
-    return (
-      <box padding={1} flexDirection="column">
-        <text fg="cyan"><b>promptic-cli</b></text>
-        <text fg="gray">Type a command below. /help lists everything.</text>
-      </box>
-    );
+    return <HomeView />;
   }
 
   return (

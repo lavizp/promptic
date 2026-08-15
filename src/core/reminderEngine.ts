@@ -1,4 +1,4 @@
-import { getDb } from '../db/schema.js';
+import { getDb } from '../db/index.js';
 import type { Reminder } from '../types/reminder.js';
 
 export function addReminder(message: string, scheduledAt: string): Reminder {

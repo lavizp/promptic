@@ -1,4 +1,4 @@
-import { getDb } from '../db/schema.js';
+import { getDb } from '../db/index.js';
 import type { Database } from 'bun:sqlite';
 import type { Todo, Category } from '../types/todo.js';
 

@@ -1,4 +1,4 @@
-import type { Note, NoteMeta } from '../types/note.js';
+import type { Note } from '../types/note.js';
 
 export const DEFAULT_NOTE_CATEGORY = 'default';
 
@@ -15,18 +15,4 @@ export function parseNoteFile(raw: string, id: string): Note | undefined {
     meta: { id, title, category, created_at, updated_at },
     content,
   };
-}
-
-export function serializeNote(meta: NoteMeta, content: string): string {
-  const frontmatter = [
-    '---',
-    `id: ${meta.id}`,
-    `title: ${meta.title}`,
-    `category: ${meta.category}`,
-    `created_at: ${meta.created_at}`,
-    `updated_at: ${meta.updated_at}`,
-    '---',
-    '',
-  ].join('\n');
-  return frontmatter + content;
 }

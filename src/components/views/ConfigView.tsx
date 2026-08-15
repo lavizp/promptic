@@ -19,7 +19,9 @@ const API_KEY_NAMES: Record<string, string> = {
   groq: 'GROQ_API_KEY',
 };
 
-type Field = 'provider' | 'key';
+const TAVILY_KEY_NAME = 'TAVILY_API_KEY';
+
+type Field = 'provider' | 'key' | 'tavily';
 type StatusKind = 'ok' | 'error' | 'info';
 
 function maskKey(key: string): string {
@@ -35,11 +37,13 @@ export function ConfigView({ onExit }: ConfigViewProps) {
   const [activeProvider, setActiveProvider] = useState(() => envStore.get('ai_provider') || 'openai');
   const [browsedProvider, setBrowsedProvider] = useState(activeProvider);
   const [apiKey, setApiKey] = useState('');
+  const [tavilyKey, setTavilyKey] = useState('');
   const [status, setStatus] = useState('');
   const [statusKind, setStatusKind] = useState<StatusKind>('info');
   const [field, setField] = useState<Field>('provider');
   const [confirmRemove, setConfirmRemove] = useState(false);
 
+  const tavilyHasKey = envStore.has(TAVILY_KEY_NAME);
   const browsedKeyName = API_KEY_NAMES[browsedProvider] ?? '';
   const browsedHasKey = envStore.has(browsedKeyName);
   const activeHasKey = envStore.has(API_KEY_NAMES[activeProvider] ?? '');
@@ -90,6 +94,23 @@ export function ConfigView({ onExit }: ConfigViewProps) {
     setApiKey('');
   };
 
+  const handleSetTavilyKey = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setStatusLine('Paste a Tavily API key first', 'error');
+      return;
+    }
+    envStore.set(TAVILY_KEY_NAME, trimmed);
+    setStatusLine('Tavily API key saved', 'ok');
+    setTavilyKey('');
+  };
+
+  const handleRemoveTavilyKey = () => {
+    if (!tavilyHasKey) return;
+    envStore.delete(TAVILY_KEY_NAME);
+    setStatusLine('Tavily API key removed', 'ok');
+  };
+
   const handleRemoveKey = () => {
     if (!browsedHasKey) return;
     setConfirmRemove(true);
@@ -105,6 +126,10 @@ export function ConfigView({ onExit }: ConfigViewProps) {
       // First Esc while typing a key just blurs to the provider field instead
       // of losing the draft; a second Esc leaves the view.
       if (field === 'key' && apiKey.trim()) {
+        setField('provider');
+        return;
+      }
+      if (field === 'tavily' && tavilyKey.trim()) {
         setField('provider');
         return;
       }
@@ -124,13 +149,14 @@ export function ConfigView({ onExit }: ConfigViewProps) {
     }
 
     if (key.name === 'tab') {
-      setField(f => (f === 'provider' ? 'key' : 'provider'));
+      setField(f => (f === 'provider' ? 'key' : f === 'key' ? 'tavily' : 'provider'));
       return;
     }
 
-    // Only bound on the provider field so 'r' can still be typed in keys.
-    if (field === 'provider' && key.name === 'r') {
-      handleRemoveKey();
+    // Only bound on the provider/tavily fields so 'r' can still be typed in keys.
+    if (key.name === 'r') {
+      if (field === 'provider') handleRemoveKey();
+      else if (field === 'tavily') handleRemoveTavilyKey();
       return;
     }
   });
@@ -177,6 +203,22 @@ export function ConfigView({ onExit }: ConfigViewProps) {
             ? <text fg="gray">Saved: {maskKey(envStore.get(browsedKeyName) ?? '')}</text>
             : <text fg="gray">· no key set</text>}
         </box>
+
+        <box marginTop={1}>
+          <text fg={field === 'tavily' ? 'cyan' : 'gray'}>
+            {field === 'tavily' ? '▸ ' : '  '}Tavily web search ({TAVILY_KEY_NAME})
+          </text>
+          <input
+            value={tavilyKey}
+            onInput={(v) => setTavilyKey(v)}
+            onSubmit={(v) => handleSetTavilyKey(String(v))}
+            placeholder={`Paste ${TAVILY_KEY_NAME}…`}
+            focused={field === 'tavily'}
+          />
+          {tavilyHasKey
+            ? <text fg="gray">Saved: {maskKey(envStore.get(TAVILY_KEY_NAME) ?? '')}</text>
+            : <text fg="gray">· no key set</text>}
+        </box>
       </box>
 
       <box marginTop={1} flexDirection="column">
@@ -202,9 +244,16 @@ export function ConfigView({ onExit }: ConfigViewProps) {
             { key: 'tab', label: 'key' },
             { key: 'esc', label: 'back' },
           ]} />
+        ) : field === 'key' ? (
+          <ShortcutBar hints={[
+            { key: 'enter', label: 'save' },
+            { key: 'tab', label: 'tavily' },
+            { key: 'esc', label: 'back' },
+          ]} />
         ) : (
           <ShortcutBar hints={[
             { key: 'enter', label: 'save' },
+            ...(tavilyHasKey ? [{ key: 'r', label: 'remove key' }] : []),
             { key: 'tab', label: 'provider' },
             { key: 'esc', label: 'back' },
           ]} />

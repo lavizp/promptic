@@ -1,5 +1,8 @@
+import { SyntaxStyle } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
 import { ShortcutBar } from "../shared/ShortcutBar.js";
+
+const syntaxStyle = SyntaxStyle.create();
 
 interface ChatViewProps {
   stream: string;
@@ -16,7 +19,7 @@ export function ChatView({ stream, isProcessing, onExit }: ChatViewProps) {
     <box flexDirection="column" flexGrow={1}>
       <scrollbox scrollY padding={1} flexGrow={1}>
         {isProcessing && !stream && <text fg="gray">Thinking...</text>}
-        {stream && <text>{stream}</text>}
+        {stream && <markdown content={stream} syntaxStyle={syntaxStyle} conceal streaming={isProcessing} />}
       </scrollbox>
       <ShortcutBar
         hints={[

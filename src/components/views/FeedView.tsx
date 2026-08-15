@@ -1,5 +1,8 @@
+import { SyntaxStyle } from "@opentui/core";
 import type { HistoryEntry } from "../../types/app.js";
 import { HomeView } from "./HomeView.js";
+
+const syntaxStyle = SyntaxStyle.create();
 
 interface FeedViewProps {
   history: HistoryEntry[];
@@ -18,7 +21,7 @@ export function FeedView({ history }: FeedViewProps) {
           {entry.command !== 'system' ? (
             <>
               <text fg="cyan">❯ {entry.command}</text>
-              <text>{entry.output}</text>
+              <markdown content={entry.output} syntaxStyle={syntaxStyle} conceal />
             </>
           ) : (
             <text fg="gray">{entry.output}</text>

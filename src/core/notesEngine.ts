@@ -1,19 +1,33 @@
-import fs from 'fs/promises';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getDb } from '../db/schema.js';
+import { getDb } from '../db/index.js';
 import type { Database } from 'bun:sqlite';
 import type { Note, NoteMeta } from '../types/note.js';
 import type { Category } from '../types/todo.js';
-import { parseNoteFile, serializeNote, DEFAULT_NOTE_CATEGORY } from './noteFile.js';
+import { parseNoteFile, DEFAULT_NOTE_CATEGORY } from './noteFile.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const NOTES_DIR = path.resolve(__dirname, '../../notes');
 
-const filePath = (id: string) => path.join(NOTES_DIR, `${id}.md`);
+interface NoteRow {
+  id: string;
+  title: string;
+  category: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
 
-async function ensureNotesDir() {
-  await fs.mkdir(NOTES_DIR, { recursive: true });
+function toNote(row: NoteRow): Note {
+  const meta: NoteMeta = {
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+  return { meta, content: row.content };
 }
 
 function generateId(): string {
@@ -22,6 +36,47 @@ function generateId(): string {
 
 function ensureNoteCategory(db: Database, category: string): void {
   db.prepare('INSERT OR IGNORE INTO note_categories (name) VALUES (?)').run(category);
+}
+
+/** One-time import of legacy /notes/*.md files into the database. */
+function migrateNotesFromDisk(db: Database): void {
+  if (db.prepare("SELECT value FROM meta WHERE key = 'notes_imported'").get()) return;
+
+  const dir = NOTES_DIR;
+  let files: string[] = [];
+  try {
+    files = fs.readdirSync(dir).filter(f => f.endsWith('.md'));
+  } catch {
+    files = [];
+  }
+
+  for (const file of files) {
+    const id = file.replace('.md', '');
+    const parsed = parseNoteFile(fs.readFileSync(path.join(dir, file), 'utf-8'), id);
+    if (!parsed) continue;
+    ensureNoteCategory(db, parsed.meta.category);
+    db.prepare(
+      'INSERT OR IGNORE INTO notes (id, title, category, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(
+      parsed.meta.id,
+      parsed.meta.title,
+      parsed.meta.category,
+      parsed.content,
+      parsed.meta.created_at,
+      parsed.meta.updated_at,
+    );
+    fs.unlinkSync(path.join(dir, file));
+  }
+
+  if (files.length > 0) {
+    try {
+      fs.rmdirSync(dir);
+    } catch {
+      // Not empty or already gone — leave it.
+    }
+  }
+
+  db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)').run('notes_imported', '1');
 }
 
 export function getNoteCategories(): Category[] {
@@ -49,34 +104,28 @@ export async function removeNoteCategory(name: string): Promise<void> {
 }
 
 export async function createNote(title: string, category: string = DEFAULT_NOTE_CATEGORY, content: string = ''): Promise<Note> {
-  await ensureNotesDir();
-  ensureNoteCategory(getDb(), category);
+  const db = getDb();
+  migrateNotesFromDisk(db);
+  ensureNoteCategory(db, category);
   const id = generateId();
   const now = new Date().toISOString();
-  const meta: NoteMeta = { id, title, category, created_at: now, updated_at: now };
-  await fs.writeFile(filePath(id), serializeNote(meta, content), 'utf-8');
+  db.prepare(
+    'INSERT INTO notes (id, title, category, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(id, title.trim() || 'Untitled', category, content, now, now);
   return (await getNoteById(id))!;
 }
 
 export async function getNoteById(id: string): Promise<Note | undefined> {
-  try {
-    const raw = await fs.readFile(filePath(id), 'utf-8');
-    return parseNoteFile(raw, id);
-  } catch {
-    return undefined;
-  }
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM notes WHERE id = ?').get(id) as NoteRow | undefined;
+  return row ? toNote(row) : undefined;
 }
 
 export async function getAllNotes(): Promise<Note[]> {
-  await ensureNotesDir();
-  const notes: Note[] = [];
-  for (const file of await fs.readdir(NOTES_DIR)) {
-    if (!file.endsWith('.md')) continue;
-    const parsed = parseNoteFile(await fs.readFile(path.join(NOTES_DIR, file), 'utf-8'), file.replace('.md', ''));
-    if (parsed) notes.push(parsed);
-  }
-  notes.sort((a, b) => b.meta.updated_at.localeCompare(a.meta.updated_at));
-  return notes;
+  const db = getDb();
+  migrateNotesFromDisk(db);
+  const rows = db.prepare('SELECT * FROM notes ORDER BY updated_at DESC').all() as NoteRow[];
+  return rows.map(toNote);
 }
 
 export interface NoteUpdate {
@@ -86,20 +135,23 @@ export interface NoteUpdate {
 }
 
 export async function updateNote(id: string, changes: NoteUpdate): Promise<Note> {
+  const db = getDb();
   const note = await getNoteById(id);
   if (!note) throw new Error(`Note ${id} not found`);
-  if (changes.category) ensureNoteCategory(getDb(), changes.category);
-  const meta: NoteMeta = {
-    ...note.meta,
-    title: changes.title?.trim() || note.meta.title,
-    category: changes.category ?? note.meta.category,
-    updated_at: new Date().toISOString(),
-  };
-  const content = changes.content ?? note.content;
-  await fs.writeFile(filePath(id), serializeNote(meta, content), 'utf-8');
+  if (changes.category) ensureNoteCategory(db, changes.category);
+  db.prepare(
+    'UPDATE notes SET title = ?, category = ?, content = ?, updated_at = ? WHERE id = ?'
+  ).run(
+    changes.title?.trim() || note.meta.title,
+    changes.category ?? note.meta.category,
+    changes.content ?? note.content,
+    new Date().toISOString(),
+    id,
+  );
   return (await getNoteById(id))!;
 }
 
 export async function deleteNote(id: string): Promise<void> {
-  await fs.unlink(filePath(id));
+  const db = getDb();
+  db.prepare('DELETE FROM notes WHERE id = ?').run(id);
 }

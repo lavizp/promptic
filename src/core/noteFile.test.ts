@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseNoteFile, serializeNote } from "./noteFile.ts";
-import type { NoteMeta } from "../types/note.ts";
+import { parseNoteFile } from "./noteFile.ts";
 
 describe("parseNoteFile", () => {
   it("parses frontmatter including category", () => {
@@ -54,21 +53,5 @@ describe("parseNoteFile", () => {
 
   it("returns undefined for content without frontmatter", () => {
     expect(parseNoteFile('just text', 'x')).toBeUndefined();
-  });
-});
-
-describe("serializeNote", () => {
-  it("round-trips meta and content", () => {
-    const meta: NoteMeta = {
-      id: 'abc',
-      title: 'Hi',
-      category: 'work',
-      created_at: 'c',
-      updated_at: 'u',
-    };
-    const raw = serializeNote(meta, '# body');
-    const parsed = parseNoteFile(raw, 'abc')!;
-    expect(parsed.meta).toEqual(meta);
-    expect(parsed.content).toBe('# body');
   });
 });

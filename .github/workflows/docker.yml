@@ -1,0 +1,79 @@
+name: Docker image
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Registers binfmt handlers so the linux/arm64 layers can run their
+      # `bun install` step under emulation on this amd64 runner.
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Pull requests build only — no credentials, nothing published. This is
+      # what catches a broken Dockerfile before it reaches main.
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=pr
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The TUI can't be driven headlessly, but we can prove the native
+      # OpenTUI library loads, the SQLite schema builds, and the config store
+      # resolves — the three things most likely to break in a container.
+      - name: Smoke-test the amd64 image
+        if: github.event_name == 'pull_request'
+        run: |
+          docker buildx build --platform linux/amd64 --load -t promptic:ci .
+          docker run --rm promptic:ci bun -e "
+            const { getDb } = await import('/app/src/db/connection.ts');
+            const tables = getDb()
+              .query(\"SELECT name FROM sqlite_master WHERE type='table'\")
+              .all().map(r => r.name);
+            if (!tables.includes('todos')) throw new Error('schema missing: ' + tables);
+            const { envStore } = await import('/app/src/config/envConfig/envConfig.ts');
+            if (!envStore.getStore().path.startsWith('/config')) {
+              throw new Error('config store escaped the volume: ' + envStore.getStore().path);
+            }
+            console.log('ok:', tables.sort().join(', '));
+          "

@@ -21,6 +21,24 @@ WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 
+# Fail loudly here rather than at first launch. @opentui/core picks its native
+# library by platform, and package.json hard-pins the x64 one as a direct
+# dependency — so an arm64 image can install "successfully" while lacking the
+# library it actually needs. This asserts the right .so for the target arch.
+RUN set -eu; \
+    arch="$(uname -m)"; \
+    case "$arch" in \
+      x86_64)  pkg=core-linux-x64 ;; \
+      aarch64) pkg=core-linux-arm64 ;; \
+      *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac; \
+    if [ ! -f "node_modules/@opentui/$pkg/libopentui.so" ]; then \
+      echo "missing native OpenTUI library for $arch (expected @opentui/$pkg)" >&2; \
+      ls -1 node_modules/@opentui >&2; \
+      exit 1; \
+    fi; \
+    echo "native OpenTUI library present for $arch: @opentui/$pkg"
+
 # Run straight from TypeScript. `bun run build` (plain tsc) is not an option:
 # it leaves `import { Database } from 'bun:sqlite'` in dist/, which only Bun
 # can resolve, and bin/cli.js calls a run() export src/index.tsx never has.

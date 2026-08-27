@@ -12,7 +12,48 @@ A keyboard-driven terminal "second brain" — chat with AI, manage todos, notes,
 - **Multi-provider AI** — OpenAI, Anthropic, Gemini, or Groq, configurable in-app.
 - **Keyboard-driven** — every view lists its shortcuts in a hint bar; `Esc` returns to the feed.
 
-## Install / Run
+## Run with Docker
+
+Nothing to install but Docker — no Bun, no clone:
+
+```bash
+docker run -it --rm \
+  -v promptic-db:/app/db \
+  -v promptic-config:/config \
+  ghcr.io/lavizp/promptic:latest
+```
+
+On first run, type `/config` to pick a provider and paste an API key. It's
+stored in the `promptic-config` volume, so you only do it once.
+
+What the flags are for:
+
+| Flag | Why it's needed |
+|---|---|
+| `-it` | This is a full-screen TUI. `-i` keeps stdin open so your keystrokes reach the app; `-t` gives it a terminal to draw into. Without these you get a blank container. |
+| `-v promptic-db:/app/db` | Your todos, notes, and reminders (`brain.sqlite`). Containers are disposable — without this volume, everything is gone on exit. |
+| `-v promptic-config:/config` | Your provider choice and API keys. Without this you'd retype them every run. |
+| `--rm` | Cleans up the stopped container. Your data lives in the volumes, not the container, so nothing is lost. |
+
+Note: API keys are set **only** through the in-app `/config` screen. Passing
+`-e OPENAI_API_KEY=...` has no effect — the app reads its keys from the `conf`
+store in `/config`, never from the environment.
+
+If you've cloned the repo, Compose wraps the same thing:
+
+```bash
+docker compose run --rm promptic     # `run`, not `up` — `up` has no terminal
+```
+
+Both paths share the same two volumes, so you can switch between them freely.
+
+To upgrade, pull and rerun — your volumes carry over:
+
+```bash
+docker pull ghcr.io/lavizp/promptic:latest
+```
+
+## Install / Run without Docker
 
 Requires [Bun](https://bun.sh) (uses `bun:sqlite`).
 
@@ -70,7 +111,11 @@ Date can be given as `today`, `tomorrow`, or `YYYY-MM-DD`; time as `HH:MM` or `4
 
 ## Providers
 
-| Provider | Model | Env key |
+Set your provider and key with `/config`. These are keys in the local `conf`
+store, **not** environment variables — exporting `OPENAI_API_KEY` in your shell
+does nothing.
+
+| Provider | Model | Config key |
 |---|---|---|
 | OpenAI | gpt-4o-mini | `OPENAI_API_KEY` |
 | Anthropic | claude-3-5-haiku-latest | `ANTHROPIC_API_KEY` |
@@ -79,9 +124,9 @@ Date can be given as `today`, `tomorrow`, or `YYYY-MM-DD`; time as `HH:MM` or `4
 
 ## Storage
 
-- `db/brain.sqlite` — todos, categories, reminders, and metadata (SQLite via `bun:sqlite`).
-- `notes/*.md` — each note is a markdown file with YAML frontmatter (`id`, `title`, `category`, dates).
-- API keys — stored in a local per-project store (`conf`), set via `/config`.
+- `db/brain.sqlite` — todos, categories, notes, reminders, and metadata (SQLite via `bun:sqlite`). Under Docker this is the `promptic-db` volume.
+- API keys and your provider choice — a local `conf` store, set via `/config`. Under Docker this is the `promptic-config` volume, at `/config/prompt-enhancer-nodejs/config.json`.
+- Notes used to be `notes/*.md` files on disk. They now live in the `notes` table; if you have a pre-existing `notes/` directory it's imported once on startup (and the files are removed after import).
 
 ## Development
 

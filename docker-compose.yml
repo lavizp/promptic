@@ -1,0 +1,39 @@
+# Run it with:  docker compose run --rm promptic
+#
+# `run`, not `up`: this is an interactive TUI, not a background service.
+# `up` won't give it a usable terminal.
+
+services:
+  promptic:
+    build: .
+    image: promptic:local
+    # Build from the Dockerfile rather than reaching for a registry. Without
+    # this, Compose tries to pull first and prints a registry error before
+    # falling back to a local build.
+    pull_policy: build
+
+    # An interactive TUI needs a terminal: stdin_open keeps keystrokes
+    # flowing in, tty gives OpenTUI a pseudo-terminal to draw into.
+    stdin_open: true
+    tty: true
+
+    environment:
+      # Inherit the real terminal type when the host has one.
+      TERM: ${TERM:-xterm-256color}
+
+    # Named volumes, not bind mounts to ./db — named volumes are managed by
+    # Docker and sidestep host UID ownership problems.
+    volumes:
+      - promptic-db:/app/db          # brain.sqlite (+ its -wal/-shm sidecars)
+      - promptic-config:/config      # API keys set via /config
+
+volumes:
+  # The explicit `name:` matters. By default Compose would prefix these with
+  # the project name (promptic_promptic-db), so the same user would get a
+  # different brain depending on whether they ran `docker compose run` or the
+  # plain `docker run` command in the README. Pinning the names keeps one
+  # brain across both.
+  promptic-db:
+    name: promptic-db
+  promptic-config:
+    name: promptic-config

@@ -1,0 +1,27 @@
+# Keep the build context small, and — more importantly — keep host state out
+# of the image.
+
+# The host tree contains a stale better-sqlite3 (dropped when we moved to
+# bun:sqlite) and x64-only native libraries. Copying it in would break an
+# arm64 build; `bun install` inside the container resolves the right ones.
+node_modules
+
+# `tsc` output is unusable here: dist/db/connection.js still imports the
+# Bun-only `bun:sqlite`. The container runs from src/ instead.
+dist
+
+# Personal data — never bake a developer's brain into a published image.
+db
+notes
+.env
+
+.git
+.gitignore
+.github
+.superpowers
+docs
+bin
+vitest.config.ts
+Dockerfile
+docker-compose.yml
+.dockerignore

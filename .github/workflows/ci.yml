@@ -1,33 +1,34 @@
-name: Node.js CI
+name: CI
 
-# Trigger the workflow ONLY on pull requests targeting the main branch
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  push:
+    branches: ["main"]
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+      # Bun, not Node. The app imports `bun:sqlite` and loads OpenTUI's native
+      # library through Bun's FFI, so a Node matrix could never actually run
+      # it — the old 18/20/22 jobs only ever typechecked and then failed on a
+      # missing package-lock.json.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4"
 
-    - name: Install dependencies
-      run: npm ci --legacy-peer-deps
+      # Installs from bun.lock, which is the lockfile this repo actually has.
+      - run: bun install --frozen-lockfile
 
-    - name: Build project
-      run: npm run build
+      # Typecheck without emitting. `tsc` output isn't usable at runtime
+      # (dist/ keeps the Bun-only `bun:sqlite` import), so the type errors are
+      # the useful signal, not the artifacts.
+      - name: Typecheck
+        run: bun x tsc --noEmit
 
-    - name: Run tests
-      run: npm run test
+      - name: Test
+        run: bun run test

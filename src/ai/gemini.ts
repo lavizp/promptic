@@ -1,32 +1,37 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { GenerateInput, GenerateResult } from "./types.ts";
-import { providerConfig } from "./config.ts";
-import { envStore } from "../config/envConfig/envConfig.ts";
-
-const config = providerConfig.gemini;
+import { resolveMaxTokens, resolveModel, resolveTemperature, requireApiKey } from "./settings.ts";
 
 export async function generate(input: GenerateInput): Promise<GenerateResult> {
-  const apiKey = envStore.get("GEMINI_API_KEY");
-  if (!apiKey) throw new Error("GEMINI_API_KEY not found in env store");
-
+  const apiKey = requireApiKey('gemini');
+  const modelName = resolveModel('gemini');
   const genAI = new GoogleGenerativeAI(apiKey);
 
   const model = genAI.getGenerativeModel({
-    model: config.model,
+    model: modelName,
     systemInstruction: input.systemPrompt,
   });
 
   const result = await model.generateContent({
     contents: [{ role: "user", parts: [{ text: input.prompt }] }],
     generationConfig: {
-      temperature: config.temperature,
-      maxOutputTokens: config.maxTokens,
+      temperature: resolveTemperature('gemini'),
+      maxOutputTokens: resolveMaxTokens('gemini'),
     },
   });
 
+  // `response.text()` throws when the candidate carries no text part, so read
+  // the parts directly instead.
+  const parts = result.response.candidates?.[0]?.content?.parts ?? [];
+  const content = parts
+    .map((part) => part.text)
+    .filter((text): text is string => typeof text === "string")
+    .join("");
+
   return {
-    content: result.response.text(),
-    model: config.model,
+    content,
+    // Gemini does not echo the model name back.
+    model: modelName,
     provider: "gemini",
   };
 }

@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { envStore } from "../../config/envConfig/envConfig.js";
-import { providerConfig } from "../../ai/config.js";
+import { resolveModel, resolveProviderName } from "../../ai/settings.js";
 
 interface InputPromptProps {
   onSubmit: (command: string) => void;
@@ -25,8 +24,8 @@ export function InputPrompt({ onSubmit, isProcessing, focused = true }: InputPro
   // The input is uncontrolled; bumping the key remounts it empty after submit.
   const [resetKey, setResetKey] = useState(0);
 
-  const provider = envStore.get('ai_provider') || 'openai';
-  const model = providerConfig[provider as keyof typeof providerConfig]?.model;
+  const provider = resolveProviderName();
+  const model = resolveModel(provider);
 
   const handleSubmit = useCallback((inputValue: string) => {
     if (!inputValue.trim() || isProcessing) return;

@@ -4,6 +4,7 @@ import type { Todo } from "./types/todo.js";
 import { OutputPane } from "./components/layout/OutputPane.js";
 import { InputPrompt } from "./components/layout/InputPrompt.js";
 import { parseCommand } from "./controllers/commandParser.js";
+import { resolveProviderName } from "./ai/settings.js";
 
 const initialHistory: HistoryEntry[] = [];
 
@@ -15,7 +16,7 @@ export function App() {
     chatStream: '',
     isProcessing: false,
     error: null,
-    provider: 'openai',
+    provider: resolveProviderName(),
   });
 
   const handleCommand = useCallback((input: string) => {

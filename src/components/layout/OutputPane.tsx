@@ -6,7 +6,6 @@ import { NotesView } from "../views/NotesView.js";
 import { RemindersView } from "../views/RemindersView.js";
 import { ChatView } from "../views/ChatView.js";
 import { ConfigView } from "../views/ConfigView.js";
-import { ErrorBox } from "../shared/ErrorBox.js";
 
 interface OutputPaneProps {
   currentView: ViewType;
@@ -20,12 +19,12 @@ interface OutputPaneProps {
 }
 
 export function OutputPane(props: OutputPaneProps) {
-  const { currentView, error } = props;
+  const { currentView } = props;
 
-  if (error) {
-    return <ErrorBox message={error} />;
-  }
-
+  // Errors are rendered *inside* the feed rather than replacing the whole pane.
+  // Every view except the feed owns its own keyboard (App.tsx focuses the
+  // command bar only on the feed), so a full-pane error box left the user with
+  // no focused input and no key handler — stuck until Ctrl+C.
   switch (currentView) {
     case 'todos':
       return <TodoView onExit={props.onExit} />;
@@ -39,6 +38,6 @@ export function OutputPane(props: OutputPaneProps) {
       return <ConfigView onExit={props.onExit} />;
     case 'feed':
     default:
-      return <FeedView history={props.history} />;
+      return <FeedView history={props.history} error={props.error} />;
   }
 }

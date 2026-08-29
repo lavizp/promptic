@@ -1,15 +1,17 @@
 import { SyntaxStyle } from "@opentui/core";
 import type { HistoryEntry } from "../../types/app.js";
 import { HomeView } from "./HomeView.js";
+import { ErrorBox } from "../shared/ErrorBox.js";
 
 const syntaxStyle = SyntaxStyle.create();
 
 interface FeedViewProps {
   history: HistoryEntry[];
+  error?: string | null;
 }
 
-export function FeedView({ history }: FeedViewProps) {
-  if (history.length === 0) {
+export function FeedView({ history, error }: FeedViewProps) {
+  if (history.length === 0 && !error) {
     return <HomeView />;
   }
 
@@ -28,6 +30,7 @@ export function FeedView({ history }: FeedViewProps) {
           )}
         </box>
       ))}
+      {error && <ErrorBox message={error} />}
     </scrollbox>
   );
 }

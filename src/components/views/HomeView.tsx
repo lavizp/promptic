@@ -1,3 +1,5 @@
+import { getMeta } from "../../db/indexRepo.js";
+
 const WORDMARK = [
   "                                  _   _                _ _ ",
   "  _ __  _ __ ___  _ __ ___  _ __ | |_(_) ___       ___| (_)",
@@ -12,11 +14,16 @@ const QUICK_START: { cmd: string; hint: string }[] = [
   { cmd: '/notes', hint: 'markdown notes' },
   { cmd: '/reminders', hint: 'schedule reminders' },
   { cmd: '/remind-me "call Bill tomorrow at 4PM"', hint: 'AI-scheduled reminder' },
-  { cmd: '/config', hint: 'set provider & API key' },
+  { cmd: '/search [query]', hint: 'search everything you have written' },
+  { cmd: '/config', hint: 'set provider & model' },
   { cmd: '/help', hint: 'all commands' },
 ];
 
 export function HomeView() {
+  // Indexing is manual, so an existing brain starts with an empty index and
+  // /search would silently return nothing. Say so once, here.
+  const needsIndex = getMeta('index_dirty') === '1';
+
   return (
     <box flexDirection="column" flexGrow={1} padding={1} flexShrink={0}>
       <box flexGrow={1} flexDirection="column" alignItems="center" justifyContent="center">
@@ -37,6 +44,11 @@ export function HomeView() {
           </box>
         ))}
         <text marginTop={1} fg="gray">(any other text starts a chat / asks the AI)</text>
+        {needsIndex && (
+          <text marginTop={1} fg="yellow">
+            ⚠ Your search index is empty — run /reindex to make your notes searchable.
+          </text>
+        )}
       </box>
     </box>
   );

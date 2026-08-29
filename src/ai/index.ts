@@ -1,7 +1,17 @@
 import type { AIProviderEnums } from "./types.ts";
 
 export type { GenerateInput, GenerateResult } from "./types.ts";
-export { providerConfig } from "./config.ts";
+export { PROVIDER_DEFAULTS, PROVIDER_NAMES } from "./config.ts";
+export type { ProviderDefaults } from "./config.ts";
+export {
+  hasModelOverride,
+  resolveApiKey,
+  resolveModel,
+  resolveProviderName,
+  setModel,
+} from "./settings.ts";
+export { supportsTools } from "./capabilities.ts";
+export { fallbackModels, listModels } from "./models.ts";
 
 import { generate as generateAnthropic } from "./anthropic.ts";
 import { generate as generateGemini } from "./gemini.ts";

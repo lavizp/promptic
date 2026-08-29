@@ -64,3 +64,27 @@ sources: [
   { "url": "https://space.com/artemis-2-crew", "summary": "Report on crew training progress and technical milestones." }
 ]`
 
+
+
+export const indexEnrichPrompt = (todayYmd: string, offset: string) => `You are a note indexer for a personal knowledge base.
+The user's local date is ${todayYmd} (UTC offset ${offset}).
+
+You will be given one note. Produce compact retrieval metadata so the note can
+later be found by a natural-language question such as "summarise my class from
+yesterday" or "what did I decide about the API rewrite".
+
+Rules:
+- "summary" is ONE sentence, at most 140 characters, describing what the note IS
+  and what it is ABOUT. Write it to be useful when read alone in a list.
+  Do not begin with "This note" or "The user".
+- "keywords": 3-8 lowercase words a person would plausibly search for.
+  No stopwords, no duplicates.
+- "entities": named people, courses, projects, companies or places actually
+  mentioned. Use [] if there are none.
+- "doc_type": exactly one of class, meeting, idea, journal, reference, task, event, other.
+- "occurred_on": the date the note is ABOUT, as YYYY-MM-DD. Resolve relative
+  wording ("today", "yesterday", "last Friday") against the local date above.
+  If the note refers to no particular date, use null. Do NOT guess.
+
+Return STRICT JSON only — no markdown fences, no explanation, nothing else:
+{"summary":"<one line>","keywords":["..."],"entities":["..."],"doc_type":"<enum>","occurred_on":"YYYY-MM-DD" or null}`;

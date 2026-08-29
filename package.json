@@ -16,7 +16,9 @@
     "start": "bun src/index.tsx",
     "prepublishOnly": "npm run build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:db": "bun test src/**/*.bun.test.ts",
+    "test:all": "npm run test && npm run test:db"
   },
   "repository": {
     "type": "git",

@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { AppState, HistoryEntry } from "../types/app.js";
+import type { AppState } from "../types/app.js";
 import * as todoEngine from "../core/todoEngine.js";
 import * as reminderEngine from "../core/reminderEngine.js";
 import {
@@ -12,17 +12,12 @@ import {
 } from "../core/reminderTime.js";
 import { generate } from "../core/llm.js";
 import { reminderParsePrompt } from "../ai/prompts/system.js";
-
-let historyIdCounter = 1;
+import { appendEntry, makeEntry, nextEntryId, progressBar, updateEntry } from "../core/feed.js";
+import { formatReindexResult, reindexAll } from "../core/indexer.js";
+import { searchIndex } from "../core/search.js";
 
 function addEntry(state: AppState, command: string, output: string): Partial<AppState> {
-  const entry: HistoryEntry = {
-    id: historyIdCounter++,
-    command,
-    output,
-    timestamp: new Date().toISOString(),
-  };
-  return { history: [...state.history, entry] };
+  return { history: appendEntry(state.history, makeEntry(nextEntryId(), command, output)) };
 }
 
 export async function parseCommand(
@@ -32,6 +27,10 @@ export async function parseCommand(
 ) {
   const trimmed = input.trim();
   if (!trimmed) return;
+
+  // Any new command clears a previous error, so a stale banner never lingers
+  // under an unrelated result.
+  setState(s => (s.error === null ? s : { ...s, error: null }));
 
   // Non-slash commands default to /hey
   const cmdText = trimmed.startsWith('/') ? trimmed : `/hey ${trimmed}`;
@@ -51,7 +50,9 @@ export async function parseCommand(
           ...addEntry(s, input, response),
         }));
       } catch (err: any) {
-        setState(s => ({ ...s, isProcessing: false, error: err.message }));
+        // Back to the feed: the feed owns the command bar, so an error there is
+        // dismissable. Leaving currentView as 'chat' stranded the user.
+        setState(s => ({ ...s, isProcessing: false, currentView: 'feed', error: err.message }));
       }
       break;
     }
@@ -105,8 +106,69 @@ export async function parseCommand(
         const reminder = reminderEngine.addReminder(parsed.message, resolved.iso);
         setState(s => ({ ...s, ...addEntry(s, input, `Reminder set for ${formatReminderTime(reminder.scheduled_at)}: ${reminder.message}`) }));
       } catch (err: any) {
-        setState(s => ({ ...s, error: err.message }));
+        setState(s => ({ ...s, isProcessing: false, currentView: 'feed', error: err.message }));
       }
+      break;
+    }
+
+    case 'reindex': {
+      const full = args.includes('--full');
+      const entryId = nextEntryId();
+      const started = Date.now();
+
+      setState(s => ({
+        ...s,
+        isProcessing: true,
+        currentView: 'feed',
+        history: appendEntry(s.history, makeEntry(entryId, input, 'Indexing…')),
+      }));
+
+      try {
+        const result = await reindexAll({
+          full,
+          // The loop is await-bound on network I/O, so every batch yields to
+          // the event loop and OpenTUI repaints. Rewriting one entry keeps the
+          // feed readable instead of appending a line per item.
+          onProgress: (done, total, label) => {
+            setState(s => ({
+              ...s,
+              history: updateEntry(
+                s.history,
+                entryId,
+                `Indexing ${total} item${total === 1 ? '' : 's'}…\n  ${progressBar(done, total)}  ${done}/${total}  ·  ${label}`,
+              ),
+            }));
+          },
+        });
+        const summary = formatReindexResult(result, Date.now() - started);
+        setState(s => ({
+          ...s,
+          isProcessing: false,
+          history: updateEntry(s.history, entryId, summary),
+        }));
+      } catch (err: any) {
+        setState(s => ({
+          ...s,
+          isProcessing: false,
+          currentView: 'feed',
+          history: updateEntry(s.history, entryId, `Reindex failed: ${err.message}`),
+        }));
+      }
+      break;
+    }
+
+    case 'search': {
+      if (!argStr) {
+        setState(s => ({ ...s, ...addEntry(s, input, 'Usage: /search [query] - search your notes, todos and reminders') }));
+        return;
+      }
+      // Deliberately LLM-free: a direct view of what the agent's search tool
+      // sees, which makes index problems obvious without burning a turn.
+      const hits = searchIndex({ query: argStr, limit: 10 });
+      const output = hits.length === 0
+        ? `No matches for "${argStr}". If you haven't indexed yet, run /reindex.`
+        : hits.map(h => `**${h.kind}** · ${h.title}  _(${h.date})_\n  ${h.summary}`).join('\n\n');
+      setState(s => ({ ...s, ...addEntry(s, input, output) }));
       break;
     }
 
@@ -123,6 +185,8 @@ export async function parseCommand(
         '  /notes               - Open the notes view (add/edit/move/delete)',
         '  /reminders           - Open the reminders view (add/edit/done/delete)',
         '  /remind-me [text]    - Add a reminder from natural language (e.g. call Bill tomorrow at 4PM)',
+        '  /search [query]      - Search notes, todos and reminders (no AI)',
+        '  /reindex [--full]    - Build the search index (--full re-does everything)',
         '  /config              - Configure AI provider & keys',
         '  /clear               - Clear history',
         '  /help                - Show this help',

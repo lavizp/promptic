@@ -9,7 +9,7 @@ A keyboard-driven terminal "second brain" — chat with AI, manage todos, notes,
 - **Notes** — markdown files with categories, an embedded editor with rendered preview, move/delete.
 - **Reminders** — schedule with dates/times, mark done, delete; or use natural language.
 - **Natural-language reminders** — `/remind-me "call Bill tomorrow at 4PM"` uses AI to resolve the date/time.
-- **Multi-provider AI** — OpenAI, Anthropic, Gemini, or Groq, configurable in-app.
+- **Multi-provider AI** — OpenAI, Anthropic, Gemini, or Groq. Provider *and model* are configurable in-app; `/config` can list the models your key can actually reach.
 - **Keyboard-driven** — every view lists its shortcuts in a hint bar; `Esc` returns to the feed.
 
 ## Run with Docker
@@ -86,7 +86,9 @@ The package declares a `promptic-cli` bin, but the primary way to run it today i
 | `/notes` | Notes view: markdown editor + preview, categories, move/delete |
 | `/reminders` | Reminders view: add/edit/done/delete with date & time |
 | `/remind-me [text]` | AI-scheduled reminder from natural language |
-| `/config` | Choose provider, set/remove API keys |
+| `/search [query]` | Search notes, todos and reminders (no AI, instant) |
+| `/reindex [--full]` | Build the search index; `--full` re-does everything |
+| `/config` | Choose provider and model, set/remove API keys |
 | `/clear` | Clear the feed history |
 | `/help` | Show help |
 
@@ -97,7 +99,7 @@ Navigation: the feed is home. Slash commands switch views; `Esc` returns to the 
 - **Todos** — `↑/↓` move · `space` toggle · `a` add · `e` edit · `enter` open · `m` move · `d` delete · `c` new category
 - **Notes** — `↑/↓` move · `a` add · `e` title · `enter` edit (`Tab` preview, `Ctrl+S` save) · `m` move · `d` delete · `c` new category
 - **Reminders** — `↑/↓` move · `space` done · `a` add · `e` edit · `d` delete
-- **Config** — `↑/↓` browse providers · `enter` activate · `r` remove key · `Tab` switch field
+- **Config** — `↑/↓` browse providers · `enter` activate · `r` remove key · `Tab` switch field (provider → model → key → tavily) · on the model field, `m` lists live models
 
 ## Reminder date & time
 
@@ -115,16 +117,45 @@ Set your provider and key with `/config`. These are keys in the local `conf`
 store, **not** environment variables — exporting `OPENAI_API_KEY` in your shell
 does nothing.
 
-| Provider | Model | Config key |
+Models shown are the defaults. Override any of them from `/config`: Tab to the
+**Model** field, type a model id and press Enter, or press `m` to fetch the live
+list from the provider and pick one. An override is stored as `<provider>_model`
+(e.g. `groq_model`); clearing it returns you to the default, so a future default
+bump still reaches you.
+
+This matters because providers retire models: Groq removed every Llama chat
+model, which is why the old `llama-3.3-70b-versatile` default now 404s. With the
+model configurable, that no longer needs a code change.
+
+| Provider | Default model | Config key |
 |---|---|---|
 | OpenAI | gpt-4o-mini | `OPENAI_API_KEY` |
 | Anthropic | claude-3-5-haiku-latest | `ANTHROPIC_API_KEY` |
 | Gemini | gemini-2.0-flash | `GEMINI_API_KEY` |
-| Groq | llama-3.3-70b-versatile | `GROQ_API_KEY` |
+| Groq | openai/gpt-oss-120b | `GROQ_API_KEY` |
+
+## Search
+
+Everything you write — notes, todos, reminders — can be indexed into a single
+searchable table. Each note gets a one-line AI description plus keywords,
+entities and an inferred date; todos and reminders are indexed locally without
+an AI call, since they are already one-liners.
+
+```
+/reindex          # incremental: only what changed since last time
+/reindex --full   # re-do everything
+/search snell law
+```
+
+Indexing is **manual**: nothing runs when you save. A note you write today is
+not searchable until you run `/reindex`. The run is incremental (unchanged items
+are skipped by content hash) and degrades rather than failing — if the AI is
+rate-limited or unreachable, that item gets a local heuristic summary and is
+retried automatically on your next `/reindex`.
 
 ## Storage
 
-- `db/brain.sqlite` — todos, categories, notes, reminders, and metadata (SQLite via `bun:sqlite`). Under Docker this is the `promptic-db` volume.
+- `db/brain.sqlite` — todos, categories, notes, reminders, the search index (`item_index` + an FTS5 table), and metadata (SQLite via `bun:sqlite`). Under Docker this is the `promptic-db` volume.
 - API keys and your provider choice — a local `conf` store, set via `/config`. Under Docker this is the `promptic-config` volume, at `/config/prompt-enhancer-nodejs/config.json`.
 - Notes used to be `notes/*.md` files on disk. They now live in the `notes` table; if you have a pre-existing `notes/` directory it's imported once on startup (and the files are removed after import).
 
@@ -133,7 +164,9 @@ does nothing.
 ```bash
 npm run build      # tsc → dist/
 npm start          # run the TUI (bun)
-npm test           # vitest
+npm test           # vitest (pure logic)
+npm run test:db    # bun test (SQLite-backed; needs bun:sqlite)
+npm run test:all   # both
 ```
 
 ### Project structure
@@ -148,7 +181,8 @@ src/
 ├── config/        # EnvStore (persistent API-key storage via conf)
 ├── controllers/   # Slash-command parser
 ├── core/          # Engines (todo/note/reminder), DB schema, date/time helpers, LLM
-├── db/            # SQLite schema + migrations
+├── core/index/    # Retrieval index: hashing, enrichment, planning, FTS queries
+├── db/            # SQLite schema + migrations + index repository
 ├── integrations/  # External services (Tavily — not yet wired into the TUI)
 └── types/         # Shared TypeScript types
 ```

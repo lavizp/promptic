@@ -1,6 +1,6 @@
 import type { Database } from 'bun:sqlite';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export function migrate(db: Database) {
   const row = db.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as { value: string } | undefined;
@@ -62,6 +62,14 @@ export function migrate(db: Database) {
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
     `);
+  }
+
+  if (version < 6) {
+    // initSchema already created item_index, item_fts and the new indexes with
+    // IF NOT EXISTS, so there is nothing to add here. What an *existing* user
+    // needs is a nudge: they have notes, todos and reminders but an empty
+    // index, and indexing is manual. HomeView reads this flag.
+    db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)').run('index_dirty', '1');
   }
 
   db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)').run('schema_version', String(SCHEMA_VERSION));
